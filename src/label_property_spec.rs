@@ -5,12 +5,14 @@ use thiserror::Error;
 use crate::{
     Name, TypeName,
     formal_base_type::FormalBaseType,
+    formal_graph_type::FormalGraphType,
     property_value_spec::{PropertyValue, PropertyValueSpec},
     record_type::RecordType,
     semantics_error::SemanticsError,
 };
 
 // In the PGSchema paper, LabelPropertySpec is denoted by F
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LabelPropertySpec {
     Label(Name),
     Ref(TypeName),
@@ -22,6 +24,17 @@ pub enum LabelPropertySpec {
 }
 
 impl LabelPropertySpec {
+    pub fn label(label: Name) -> Self {
+        LabelPropertySpec::Label(label)
+    }
+
+    pub fn content(
+        label_property_spec: LabelPropertySpec,
+        property_value_spec: PropertyValueSpec,
+    ) -> Self {
+        LabelPropertySpec::Content(Box::new(label_property_spec), property_value_spec)
+    }
+
     pub fn semantics(
         &self,
         graph_type: &FormalGraphType,
@@ -57,25 +70,5 @@ impl LabelPropertySpec {
                 Ok(result)
             }
         }
-    }
-}
-
-struct FormalGraphType {
-    map: HashMap<TypeName, LabelPropertySpec>,
-}
-
-impl FormalGraphType {
-    pub fn new() -> Self {
-        FormalGraphType {
-            map: HashMap::new(),
-        }
-    }
-
-    pub fn add(&mut self, type_name: TypeName, label_property_spec: LabelPropertySpec) {
-        self.map.insert(type_name, label_property_spec);
-    }
-
-    pub fn get(&self, type_name: &TypeName) -> Option<&LabelPropertySpec> {
-        self.map.get(type_name)
     }
 }

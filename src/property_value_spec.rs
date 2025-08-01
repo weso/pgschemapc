@@ -1,11 +1,12 @@
+use crate::card::Card;
 use crate::formal_base_type::FormalBaseType;
 use crate::record::Key;
-use crate::record::Record;
+
 use crate::record::Value;
 use crate::record_type::RecordType;
-use crate::record_type::ValueType;
+
 use crate::semantics_error::SemanticsError;
-use std::collections::HashMap;
+use crate::value_type::ValueType;
 use std::collections::HashSet;
 use std::fmt::Display;
 
@@ -16,12 +17,20 @@ pub enum PropertyValueSpec {
 }
 
 impl PropertyValueSpec {
+    pub fn open(property_value: PropertyValue) -> Self {
+        PropertyValueSpec::Open(property_value)
+    }
+
+    pub fn closed(property_value: PropertyValue) -> Self {
+        PropertyValueSpec::Closed(property_value)
+    }
+
     pub fn semantics(&self) -> Result<FormalBaseType, SemanticsError> {
-        todo!()
-        /*match self {
-            PropertyValueSpec::Closed(pv) => pv.conforms(record, false),
-            PropertyValueSpec::Open(pv) => pv.conforms(record, true),
-        }*/
+        let content_semantics = match self {
+            PropertyValueSpec::Closed(pv) => pv.semantics(),
+            PropertyValueSpec::Open(pv) => pv.semantics(),
+        };
+        Ok(FormalBaseType::new().with_content(content_semantics))
     }
 }
 
@@ -35,6 +44,13 @@ pub enum PropertyValue {
 }
 
 impl PropertyValue {
+    pub fn property(key: Key, type_spec: TypeSpec) -> Self {
+        PropertyValue::Property(key, type_spec)
+    }
+    pub fn each_of(left: PropertyValue, right: PropertyValue) -> Self {
+        PropertyValue::EachOf(Box::new(left), Box::new(right))
+    }
+
     pub fn semantics(&self) -> HashSet<RecordType> {
         let mut semantics = HashSet::new();
         match self {
@@ -72,21 +88,42 @@ pub struct TypeSpec {
     card: Option<Card>,
 }
 
+impl TypeSpec {
+    pub fn string() -> Self {
+        TypeSpec {
+            type_def: Type::Type(ValueType::string()),
+            card: None,
+        }
+    }
+
+    pub fn integer() -> Self {
+        TypeSpec {
+            type_def: Type::Type(ValueType::integer()),
+            card: None,
+        }
+    }
+
+    pub fn date() -> Self {
+        TypeSpec {
+            type_def: Type::Type(ValueType::date()),
+            card: None,
+        }
+    }
+
+    pub fn zero_or_more(self) -> Self {
+        TypeSpec {
+            type_def: self.type_def,
+            card: Some(Card::ZeroOrMore),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum Type {
     Conjunction(Box<Type>, Box<Type>),
     Disjunction(Box<Type>, Box<Type>),
     Type(ValueType),
     Cond(ValueType, Cond),
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-enum Card {
-    ZeroOrOne,
-    One,
-    ZeroOrMore,
-    OneOrMore,
-    Range(u32, Max),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -98,10 +135,4 @@ enum Cond {
     Or(Box<Cond>, Box<Cond>),
     GreaterThan(Value),
     Equals(Value),
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-enum Max {
-    Unbounded,
-    Bounded(u32),
 }

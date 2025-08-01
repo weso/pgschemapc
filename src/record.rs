@@ -2,7 +2,19 @@ use std::collections::HashMap;
 use std::collections::HashSet as Set;
 use std::fmt::Display;
 
-pub type Key = String;
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Key(String);
+impl Key {
+    pub fn new(name: &str) -> Self {
+        Key(name.to_string())
+    }
+}
+
+impl Display for Key {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Value {
@@ -144,20 +156,20 @@ mod tests {
     #[test]
     fn test_combine() {
         let mut record1 = Record::new();
-        record1.insert("k1".to_string(), Value::str("v1"));
-        record1.insert("k1".to_string(), Value::str("v2"));
-        record1.insert("k2".to_string(), Value::str("v3"));
+        record1.insert(Key::new("k1"), Value::str("v1"));
+        record1.insert(Key::new("k1"), Value::str("v2"));
+        record1.insert(Key::new("k2"), Value::str("v3"));
 
         let mut record2 = Record::new();
-        record2.insert("k1".to_string(), Value::str("v2"));
-        record2.insert("k1".to_string(), Value::str("v4"));
-        record2.insert("k3".to_string(), Value::str("v5"));
+        record2.insert(Key::new("k1"), Value::str("v2"));
+        record2.insert(Key::new("k1"), Value::str("v4"));
+        record2.insert(Key::new("k3"), Value::str("v5"));
 
         let expected = Record {
             map: [
-                ("k1".to_string(), Set::from([Value::str("v2")])),
-                ("k2".to_string(), Set::from([Value::str("v3")])),
-                ("k3".to_string(), Set::from([Value::str("v5")])),
+                (Key::new("k1"), Set::from([Value::str("v2")])),
+                (Key::new("k2"), Set::from([Value::str("v3")])),
+                (Key::new("k3"), Set::from([Value::str("v5")])),
             ]
             .iter()
             .cloned()
@@ -171,23 +183,23 @@ mod tests {
     #[test]
     fn test_union() {
         let mut record1 = Record::new();
-        record1.insert("k1".to_string(), Value::str("v1"));
-        record1.insert("k1".to_string(), Value::str("v2"));
-        record1.insert("k2".to_string(), Value::str("v3"));
+        record1.insert(Key::new("k1"), Value::str("v1"));
+        record1.insert(Key::new("k1"), Value::str("v2"));
+        record1.insert(Key::new("k2"), Value::str("v3"));
 
         let mut record2 = Record::new();
-        record2.insert("k1".to_string(), Value::str("v2"));
-        record2.insert("k1".to_string(), Value::str("v4"));
-        record2.insert("k3".to_string(), Value::str("v5"));
+        record2.insert(Key::new("k1"), Value::str("v2"));
+        record2.insert(Key::new("k1"), Value::str("v4"));
+        record2.insert(Key::new("k3"), Value::str("v5"));
 
         let expected = Record {
             map: [
                 (
-                    "k1".to_string(),
+                    Key::new("k1"),
                     Set::from([Value::str("v2"), Value::str("v1"), Value::str("v4")]),
                 ),
-                ("k2".to_string(), Set::from([Value::str("v3")])),
-                ("k3".to_string(), Set::from([Value::str("v5")])),
+                (Key::new("k2"), Set::from([Value::str("v3")])),
+                (Key::new("k3"), Set::from([Value::str("v5")])),
             ]
             .iter()
             .cloned()

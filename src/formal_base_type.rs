@@ -1,9 +1,11 @@
 use std::collections::HashSet;
 
-use crate::{Name, record_type::RecordType};
+use crate::{
+    LabelName, Name, record::Record, record_type::RecordType, semantics_error::SemanticsError,
+};
 
 pub struct FormalBaseType {
-    labels: HashSet<Name>,
+    labels: HashSet<LabelName>,
     content: HashSet<RecordType>, // Define the structure of FormalBaseType as needed
 }
 
@@ -13,6 +15,32 @@ impl FormalBaseType {
             labels: HashSet::new(),
             content: HashSet::new(),
         }
+    }
+
+    pub fn with_labels(mut self, labels: HashSet<LabelName>) -> Self {
+        self.labels = labels;
+        self
+    }
+
+    pub fn with_content(mut self, content: HashSet<RecordType>) -> Self {
+        self.content = content;
+        self
+    }
+
+    pub fn conforms(
+        &self,
+        labels: &HashSet<LabelName>,
+        content: &Record,
+    ) -> Result<bool, SemanticsError> {
+        if self.labels != *labels {
+            return Ok(false);
+        }
+        for record_type in &self.content {
+            if record_type.conforms(content, true) {
+                return Ok(true);
+            }
+        }
+        Ok(false)
     }
 
     pub fn from_label(label: Name) -> Self {
