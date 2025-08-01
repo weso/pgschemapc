@@ -1,0 +1,200 @@
+use std::collections::HashMap;
+use std::collections::HashSet as Set;
+use std::fmt::Display;
+
+pub type Key = String;
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum Value {
+    String(String),
+    Integer(i32),
+    Date(String), // Simplified for this example
+}
+
+impl Value {
+    pub fn str(s: &str) -> Self {
+        Value::String(s.to_string())
+    }
+
+    pub fn int(i: i32) -> Self {
+        Value::Integer(i)
+    }
+
+    pub fn date(d: &str) -> Self {
+        Value::Date(d.to_string())
+    }
+
+    pub fn is_string(&self) -> bool {
+        matches!(self, Value::String(_))
+    }
+
+    pub fn is_integer(&self) -> bool {
+        matches!(self, Value::Integer(_))
+    }
+
+    pub fn is_date(&self) -> bool {
+        matches!(self, Value::Date(_))
+    }
+}
+
+impl Display for Value {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Value::String(s) => write!(f, "{}", s),
+            Value::Integer(i) => write!(f, "{}", i),
+            Value::Date(d) => write!(f, "{}", d),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Record {
+    map: HashMap<Key, Set<Value>>,
+}
+
+impl Record {
+    pub fn new() -> Self {
+        Record {
+            map: HashMap::new(),
+        }
+    }
+
+    pub fn insert(&mut self, key: Key, value: Value) {
+        self.map.entry(key).or_insert_with(Set::new).insert(value);
+    }
+
+    pub fn insert_values(&mut self, key: Key, values: Set<Value>) {
+        self.map.entry(key).or_insert_with(Set::new).extend(values);
+    }
+
+    pub fn get(&self, key: &Key) -> Option<&Set<Value>> {
+        self.map.get(key)
+    }
+
+    /*pub fn remove(&mut self, key: &Key) -> Option<Set<Value>> {
+        self.map.remove(key)
+    }*/
+
+    pub fn combine(&self, other: &Record) -> Record {
+        let mut combined = Record::new();
+        for (key1, values1) in &self.map {
+            if let Some(values2) = other.get(key1) {
+                let combined_values = values1.intersection(values2).cloned().collect::<Set<_>>();
+                combined.insert_values(key1.clone(), combined_values);
+            } else {
+                combined.insert_values(key1.clone(), values1.clone());
+            }
+        }
+        for (key2, values2) in &other.map {
+            if let Some(_) = self.get(key2) {
+                continue; // Already handled in the first loop
+            }
+            combined.insert_values(key2.clone(), values2.clone());
+        }
+        combined
+    }
+
+    pub fn union(&self, other: &Record) -> Record {
+        let mut result = Record::new();
+        for (key1, values1) in &self.map {
+            if let Some(values2) = other.get(key1) {
+                let combined_values = values1.union(values2).cloned().collect::<Set<_>>();
+                result.insert_values(key1.clone(), combined_values);
+            } else {
+                result.insert_values(key1.clone(), values1.clone());
+            }
+        }
+        for (key2, values2) in &other.map {
+            if let Some(_) = self.get(key2) {
+                continue; // Already handled in the first loop
+            }
+            result.insert_values(key2.clone(), values2.clone());
+        }
+        result
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = (&Key, &Set<Value>)> {
+        self.map.iter()
+    }
+}
+
+impl Display for Record {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.map.is_empty() {
+            return write!(f, "{{}}");
+        }
+        write!(f, "{{")?;
+        for (key, values) in &self.map {
+            let formatted_values = values
+                .iter()
+                .map(|v| format!("{}", v))
+                .collect::<Vec<_>>()
+                .join(", ");
+            write!(f, "{}: [{}], ", key, formatted_values)?;
+        }
+        write!(f, "}}")?;
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_combine() {
+        let mut record1 = Record::new();
+        record1.insert("k1".to_string(), Value::str("v1"));
+        record1.insert("k1".to_string(), Value::str("v2"));
+        record1.insert("k2".to_string(), Value::str("v3"));
+
+        let mut record2 = Record::new();
+        record2.insert("k1".to_string(), Value::str("v2"));
+        record2.insert("k1".to_string(), Value::str("v4"));
+        record2.insert("k3".to_string(), Value::str("v5"));
+
+        let expected = Record {
+            map: [
+                ("k1".to_string(), Set::from([Value::str("v2")])),
+                ("k2".to_string(), Set::from([Value::str("v3")])),
+                ("k3".to_string(), Set::from([Value::str("v5")])),
+            ]
+            .iter()
+            .cloned()
+            .collect(),
+        };
+
+        let combined = record1.combine(&record2);
+        assert_eq!(combined, expected);
+    }
+
+    #[test]
+    fn test_union() {
+        let mut record1 = Record::new();
+        record1.insert("k1".to_string(), Value::str("v1"));
+        record1.insert("k1".to_string(), Value::str("v2"));
+        record1.insert("k2".to_string(), Value::str("v3"));
+
+        let mut record2 = Record::new();
+        record2.insert("k1".to_string(), Value::str("v2"));
+        record2.insert("k1".to_string(), Value::str("v4"));
+        record2.insert("k3".to_string(), Value::str("v5"));
+
+        let expected = Record {
+            map: [
+                (
+                    "k1".to_string(),
+                    Set::from([Value::str("v2"), Value::str("v1"), Value::str("v4")]),
+                ),
+                ("k2".to_string(), Set::from([Value::str("v3")])),
+                ("k3".to_string(), Set::from([Value::str("v5")])),
+            ]
+            .iter()
+            .cloned()
+            .collect(),
+        };
+
+        let result = record1.union(&record2);
+        assert_eq!(result, expected);
+    }
+}
