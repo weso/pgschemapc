@@ -1,3 +1,5 @@
+use tracing::span::Record;
+
 use crate::boolean_expr::BooleanExpr;
 use crate::card::Card;
 use crate::formal_base_type::FormalBaseType;
@@ -45,6 +47,11 @@ impl PropertyValue {
     pub fn property(key: Key, type_spec: TypeSpec) -> Self {
         PropertyValue::Property(key, type_spec)
     }
+
+    pub fn optional_property(key: Key, type_spec: TypeSpec) -> Self {
+        PropertyValue::OptionalProperty(key, type_spec)
+    }
+
     pub fn each_of(left: PropertyValue, right: PropertyValue) -> Self {
         PropertyValue::EachOf(Box::new(left), Box::new(right))
     }
@@ -63,15 +70,12 @@ impl PropertyValue {
                 union_semantics_sets(left_semantics, right_semantics)
             }
             PropertyValue::Property(p, type_spec) => {
-                let mut semantics = HashSet::new();
-                let mut record = RecordType::new();
-                record.insert(p.clone(), type_spec.to_value_type());
-                semantics.insert(record);
-                semantics
+                let record = RecordType::new().with_key_value(p.str(), type_spec.to_value_type());
+                HashSet::from_iter(vec![record])
             }
-            PropertyValue::OptionalProperty(_, type_spec) => {
-                // semantics.insert(type_spec.to_record_type());
-                todo!()
+            PropertyValue::OptionalProperty(p, type_spec) => {
+                let record = RecordType::new().with_key_value(p.str(), type_spec.to_value_type());
+                HashSet::from_iter(vec![record, RecordType::empty()])
             }
             PropertyValue::Empty => HashSet::new(),
         }

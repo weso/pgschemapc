@@ -6,6 +6,10 @@ impl Key {
     pub fn new(name: &str) -> Self {
         Key(name.to_string())
     }
+
+    pub fn str(&self) -> &str {
+        &self.0
+    }
 }
 
 impl Display for Key {
