@@ -72,3 +72,31 @@ impl LabelPropertySpec {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::{card::Card, key::Key, property_value_spec::TypeSpec, value_type::ValueType};
+
+    use super::*;
+
+    #[test]
+    fn test_semantics_basic_record() {
+        let mut graph = FormalGraphType::new();
+        let person_label = LabelPropertySpec::Label("Person".to_string());
+        let name = PropertyValue::property(Key::new("name"), TypeSpec::string(Card::One));
+        let age = PropertyValue::property(Key::new("age"), TypeSpec::integer(Card::One));
+        let person_content = PropertyValue::each_of(name, age);
+        graph.add(
+            "PersonType".to_string(),
+            LabelPropertySpec::content(person_label, PropertyValueSpec::closed(person_content)),
+        );
+
+        let semantics = graph.get("PersonType").unwrap().semantics(&graph).unwrap();
+        let expected = FormalBaseType::new().with_label("Person").with_record_type(
+            RecordType::new()
+                .with_key_value("age", ValueType::integer(Card::One))
+                .with_key_value("name", ValueType::string(Card::One)),
+        );
+        assert_eq!(semantics, expected);
+    }
+}

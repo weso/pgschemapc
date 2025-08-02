@@ -4,12 +4,14 @@ use crate::{
     LabelName, Name, record::Record, record_type::RecordType, semantics_error::SemanticsError,
 };
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FormalBaseType {
     labels: HashSet<LabelName>,
     content: HashSet<RecordType>, // Define the structure of FormalBaseType as needed
 }
 
 impl FormalBaseType {
+    /// Creates a new FormalBaseType with no labels or content.
     pub fn new() -> Self {
         FormalBaseType {
             labels: HashSet::new(),
@@ -17,16 +19,31 @@ impl FormalBaseType {
         }
     }
 
+    /// Adds a label to the FormalBaseType.
+    pub fn with_label(mut self, label: &str) -> Self {
+        self.labels.insert(label.to_string());
+        self
+    }
+
+    /// Sets the labels for the FormalBaseType.
     pub fn with_labels(mut self, labels: HashSet<LabelName>) -> Self {
         self.labels = labels;
         self
     }
 
+    /// Adds a RecordType to the content of the FormalBaseType.
+    pub fn with_record_type(mut self, record_type: RecordType) -> Self {
+        self.content.insert(record_type);
+        self
+    }
+
+    /// Sets the content of the FormalBaseType.
     pub fn with_content(mut self, content: HashSet<RecordType>) -> Self {
         self.content = content;
         self
     }
 
+    /// Checks if the FormalBaseType conforms to the given labels and content.
     pub fn conforms(
         &self,
         labels: &HashSet<LabelName>,
@@ -36,17 +53,18 @@ impl FormalBaseType {
             return Ok(false);
         }
         for record_type in &self.content {
-            if record_type.conforms(content, true) {
+            if record_type.conforms(content, true).is_right() {
                 return Ok(true);
             }
         }
         Ok(false)
     }
 
+    /// Creates a FormalBaseType from a label.
     pub fn from_label(label: Name) -> Self {
-        let mut base_type = FormalBaseType::new();
-        base_type.labels.insert(label);
-        base_type
+        FormalBaseType::new()
+            .with_labels(HashSet::from([label]))
+            .with_content(HashSet::from([RecordType::empty()]))
     }
 
     pub fn add_label(&mut self, label: Name) {
@@ -67,12 +85,9 @@ impl FormalBaseType {
     }
 
     pub fn combine(&self, other: &FormalBaseType) -> Self {
-        let mut result = FormalBaseType::new();
-        let combined_labels: HashSet<_> = self.labels.union(&other.labels).cloned().collect();
-        FormalBaseType {
-            labels: combined_labels,
-            content: combine_set_records(&self.content, &other.content),
-        }
+        let labels: HashSet<_> = self.labels.union(&other.labels).cloned().collect();
+        let content = combine_set_records(&self.content, &other.content);
+        FormalBaseType { labels, content }
     }
 
     pub fn type_0() -> FormalBaseType {

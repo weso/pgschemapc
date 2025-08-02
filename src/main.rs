@@ -1,8 +1,10 @@
 mod boolean_expr;
 mod card;
 mod edge;
+mod evidence;
 mod formal_base_type;
 mod formal_graph_type;
+mod key;
 mod label_property_spec;
 mod node;
 mod node_id;
@@ -10,15 +12,18 @@ mod property_value_spec;
 mod record;
 mod record_type;
 mod semantics_error;
+mod value;
 mod value_type;
 
 use crate::{
+    card::Card,
     formal_graph_type::FormalGraphType,
+    key::Key,
     label_property_spec::LabelPropertySpec,
     node::Node,
     node_id::NodeId,
     property_value_spec::{PropertyValue, PropertyValueSpec, TypeSpec},
-    record::{Key, Value},
+    value::Value,
     value_type::ValueType,
 };
 use std::collections::HashSet;
@@ -47,12 +52,9 @@ fn main() {
 
     let mut graph = FormalGraphType::new();
     let person_label = LabelPropertySpec::Label("Person".to_string());
-    let name = PropertyValue::property(Key::new("name"), TypeSpec::string());
-    let age = PropertyValue::property(Key::new("age"), TypeSpec::integer());
-    let aliases = PropertyValue::property(
-        Key::new("aliases"),
-        TypeSpec::zero_or_more(TypeSpec::string()),
-    );
+    let name = PropertyValue::property(Key::new("name"), TypeSpec::string(card::Card::One));
+    let age = PropertyValue::property(Key::new("age"), TypeSpec::integer(card::Card::One));
+    let aliases = PropertyValue::property(Key::new("aliases"), TypeSpec::string(Card::ZeroOrMore));
     let person_content = PropertyValue::each_of(name, PropertyValue::each_of(age, aliases));
     graph.add(
         "PersonType".to_string(),
@@ -61,6 +63,10 @@ fn main() {
             PropertyValueSpec::closed(person_content),
         ),
     );
+
+    let label_property_spec = graph.get("PersonType").unwrap();
+    let semantics = label_property_spec.semantics(&graph).unwrap();
+    println!("Formal Base Type: {:?}", semantics);
 
     println!("Alice: {:?}", alice);
     println!("Bob: {:?}", bob);

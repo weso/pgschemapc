@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use crate::record::Value;
+use crate::Value;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum BooleanExpr {

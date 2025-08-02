@@ -46,3 +46,96 @@ impl Display for Node {
         )
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        card::Card,
+        formal_graph_type::FormalGraphType,
+        key::Key,
+        label_property_spec::LabelPropertySpec,
+        property_value_spec::{PropertyValue, PropertyValueSpec, TypeSpec},
+        value::Value,
+    };
+
+    use super::*;
+
+    #[test]
+    fn test_simple_record_alice() {
+        let mut alice_content = Record::new();
+        alice_content.insert(Key::new("name"), Value::str("Alice"));
+        alice_content.insert(Key::new("age"), Value::int(42));
+        let alice = Node::new(1)
+            .with_label("Person")
+            .with_content(&alice_content);
+
+        let mut graph = FormalGraphType::new();
+        let person_label = LabelPropertySpec::Label("Person".to_string());
+        let name = PropertyValue::property(Key::new("name"), TypeSpec::string(Card::One));
+        let age = PropertyValue::property(Key::new("age"), TypeSpec::integer(Card::One));
+        let aliases =
+            PropertyValue::property(Key::new("aliases"), TypeSpec::string(Card::ZeroOrMore));
+        let person_content = PropertyValue::each_of(name, PropertyValue::each_of(age, aliases));
+        graph.add(
+            "PersonType".to_string(),
+            LabelPropertySpec::content(person_label, PropertyValueSpec::closed(person_content)),
+        );
+        assert_eq!(
+            graph.conforms_node(&"PersonType".to_string(), &alice),
+            Ok(true)
+        )
+    }
+
+    #[test]
+    fn test_simple_record_alice_wrong() {
+        let alice = Node::new(1).with_label("Person").with_content(
+            &Record::new()
+                .with_key_value("name", Value::str("Alice"))
+                .with_key_value("age", Value::str("other")),
+        );
+
+        let mut graph = FormalGraphType::new();
+        let person_label = LabelPropertySpec::Label("Person".to_string());
+        let name = PropertyValue::property(Key::new("name"), TypeSpec::string(Card::One));
+        let age = PropertyValue::property(Key::new("age"), TypeSpec::integer(Card::One));
+        let aliases =
+            PropertyValue::property(Key::new("aliases"), TypeSpec::string(Card::ZeroOrMore));
+        let person_content = PropertyValue::each_of(name, PropertyValue::each_of(age, aliases));
+        graph.add(
+            "PersonType".to_string(),
+            LabelPropertySpec::content(person_label, PropertyValueSpec::closed(person_content)),
+        );
+        assert_eq!(
+            graph.conforms_node(&"PersonType".to_string(), &alice),
+            Ok(false)
+        )
+    }
+
+    #[test]
+    fn test_simple_record_bob() {
+        let mut bob_content = Record::new();
+        bob_content.insert(Key::new("first_name"), Value::str("Robert"));
+        bob_content.insert(Key::new("last_name"), Value::str("Smith"));
+        let aliases = [Value::str("Bob"), Value::str("Bobby")]
+            .into_iter()
+            .collect::<HashSet<_>>();
+        bob_content.insert_values(Key::new("aliases"), aliases);
+        let bob = Node::new(2).with_label("Person").with_content(&bob_content);
+        let mut graph = FormalGraphType::new();
+        let person_label = LabelPropertySpec::Label("Person".to_string());
+        let name = PropertyValue::property(Key::new("name"), TypeSpec::string(Card::One));
+        let age = PropertyValue::property(Key::new("age"), TypeSpec::integer(Card::One));
+        let aliases =
+            PropertyValue::property(Key::new("aliases"), TypeSpec::string(Card::ZeroOrMore));
+        let person_content = PropertyValue::each_of(name, PropertyValue::each_of(age, aliases));
+        graph.add(
+            "PersonType".to_string(),
+            LabelPropertySpec::content(person_label, PropertyValueSpec::closed(person_content)),
+        );
+
+        assert_eq!(
+            graph.conforms_node(&"PersonType".to_string(), &bob),
+            Ok(true)
+        )
+    }
+}

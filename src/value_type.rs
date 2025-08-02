@@ -1,6 +1,11 @@
 use std::{collections::HashSet, fmt::Display};
 
-use crate::{boolean_expr::BooleanExpr, card::Card, record::Value};
+use either::Either;
+
+use crate::{
+    Value, boolean_expr::BooleanExpr, card::Card, evidence::Evidence,
+    semantics_error::SemanticsError,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ValueType {
@@ -13,16 +18,16 @@ pub enum ValueType {
 }
 
 impl ValueType {
-    pub fn integer() -> Self {
-        ValueType::IntegerType(Card::One)
+    pub fn integer(card: Card) -> Self {
+        ValueType::IntegerType(card)
     }
 
-    pub fn string() -> Self {
-        ValueType::StringType(Card::One)
+    pub fn string(card: Card) -> Self {
+        ValueType::StringType(card)
     }
 
-    pub fn date() -> Self {
-        ValueType::DateType(Card::One)
+    pub fn date(card: Card) -> Self {
+        ValueType::DateType(card)
     }
     pub fn intersection(a: ValueType, b: ValueType) -> Self {
         ValueType::Intersection(Box::new(a), Box::new(b))
@@ -33,21 +38,61 @@ impl ValueType {
     pub fn cond(expr: BooleanExpr) -> Self {
         ValueType::Cond(expr)
     }
-    pub fn conforms(&self, values: &HashSet<Value>) -> bool {
+    pub fn conforms(&self, values: &HashSet<Value>) -> Either<Vec<SemanticsError>, Vec<Evidence>> {
         match self {
             ValueType::StringType(card) => {
-                card.contains(values.len()) && values.iter().all(|v| v.is_string())
+                if !card.contains(values.len()) {
+                    return Either::Left(vec![SemanticsError::CardinalityMismatch {
+                        expected: card.clone(),
+                        count: values.len(),
+                    }]);
+                }
+                check_all(values, |v| v.is_string(), "is_string")
             }
             ValueType::IntegerType(card) => {
-                card.contains(values.len()) && values.iter().all(|v| v.is_integer())
+                if !card.contains(values.len()) {
+                    return Either::Left(vec![SemanticsError::CardinalityMismatch {
+                        expected: card.clone(),
+                        count: values.len(),
+                    }]);
+                }
+                check_all(values, |v| v.is_integer(), "is_integer")
             }
             ValueType::DateType(card) => {
-                card.contains(values.len()) && values.iter().all(|v| v.is_date())
+                if !card.contains(values.len()) {
+                    return Either::Left(vec![SemanticsError::CardinalityMismatch {
+                        expected: card.clone(),
+                        count: values.len(),
+                    }]);
+                }
+                check_all(values, |v| v.is_date(), "is_date")
             }
-            ValueType::Intersection(a, b) => a.conforms(values) && b.conforms(values),
-            ValueType::Union(a, b) => a.conforms(values) || b.conforms(values),
-            ValueType::Cond(cond) => values.iter().all(|v| cond.check(v)), // Conditions are not checked here
+            ValueType::Intersection(a, b) => todo!(), // a.conforms(values) && b.conforms(values),
+            ValueType::Union(a, b) => todo!(),        // a.conforms(values) || b.conforms(values),
+            ValueType::Cond(cond) => todo!(), // values.iter().all(|v| cond.check(v)), // Conditions are not checked here
         }
+    }
+}
+
+fn check_all<F>(
+    values: &HashSet<Value>,
+    predicate: F,
+    predicate_name: &str,
+) -> Either<Vec<SemanticsError>, Vec<Evidence>>
+where
+    F: Fn(&Value) -> bool,
+{
+    if values.iter().all(&predicate) {
+        Either::Right(vec![]) // All values conform
+    } else {
+        Either::Left(vec![SemanticsError::PredicateFailed {
+            predicate_name: predicate_name.to_string(),
+            value: values
+                .iter()
+                .find(|v| !predicate(v))
+                .cloned()
+                .unwrap_or(Value::String("".to_string())),
+        }])
     }
 }
 

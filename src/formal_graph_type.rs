@@ -21,7 +21,7 @@ impl FormalGraphType {
         self.map.insert(type_name, label_property_spec);
     }
 
-    pub fn get(&self, type_name: &TypeName) -> Option<&LabelPropertySpec> {
+    pub fn get(&self, type_name: &str) -> Option<&LabelPropertySpec> {
         self.map.get(type_name)
     }
 

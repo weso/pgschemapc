@@ -1,14 +1,12 @@
+use crate::boolean_expr::BooleanExpr;
 use crate::card::Card;
 use crate::formal_base_type::FormalBaseType;
-use crate::record::Key;
-
-use crate::record::Value;
+use crate::key::Key;
 use crate::record_type::RecordType;
 
 use crate::semantics_error::SemanticsError;
 use crate::value_type::ValueType;
 use std::collections::HashSet;
-use std::fmt::Display;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PropertyValueSpec {
@@ -52,32 +50,59 @@ impl PropertyValue {
     }
 
     pub fn semantics(&self) -> HashSet<RecordType> {
-        let mut semantics = HashSet::new();
         match self {
             PropertyValue::EachOf(left, right) => {
                 let left_semantics = left.semantics();
                 let right_semantics = right.semantics();
-                // left_semantics.combine(&right_semantics)
-                todo!()
+                combine_semantics_sets(left_semantics, right_semantics)
             }
             PropertyValue::OneOf(left, right) => {
                 let left_semantics = left.semantics();
                 let right_semantics = right.semantics();
-                // left_semantics.combine(&right_semantics)
-                todo!()
+                //left_semantics.union(&right_semantics)
+                union_semantics_sets(left_semantics, right_semantics)
             }
-            PropertyValue::Property(_, type_spec) => {
-                // semantics.insert(type_spec.to_record_type());
-                todo!()
+            PropertyValue::Property(p, type_spec) => {
+                let mut semantics = HashSet::new();
+                let mut record = RecordType::new();
+                record.insert(p.clone(), type_spec.to_value_type());
+                semantics.insert(record);
+                semantics
             }
             PropertyValue::OptionalProperty(_, type_spec) => {
                 // semantics.insert(type_spec.to_record_type());
                 todo!()
             }
-            PropertyValue::Empty => {}
+            PropertyValue::Empty => HashSet::new(),
         }
-        semantics
     }
+}
+
+fn combine_semantics_sets(
+    left: HashSet<RecordType>,
+    right: HashSet<RecordType>,
+) -> HashSet<RecordType> {
+    let mut combined = HashSet::new();
+    for l in left {
+        for r in &right {
+            combined.insert(l.combine(r));
+        }
+    }
+    combined
+}
+
+fn union_semantics_sets(
+    left: HashSet<RecordType>,
+    right: HashSet<RecordType>,
+) -> HashSet<RecordType> {
+    // TODO: Replace by union semantics
+    let mut combined = HashSet::new();
+    for l in left {
+        for r in &right {
+            combined.insert(l.combine(r));
+        }
+    }
+    combined
 }
 
 impl PropertyValueSpec {}
@@ -85,36 +110,29 @@ impl PropertyValueSpec {}
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TypeSpec {
     type_def: Type,
-    card: Option<Card>,
 }
 
 impl TypeSpec {
-    pub fn string() -> Self {
+    pub fn string(card: Card) -> Self {
         TypeSpec {
-            type_def: Type::Type(ValueType::string()),
-            card: None,
+            type_def: Type::Type(ValueType::string(card)),
         }
     }
 
-    pub fn integer() -> Self {
+    pub fn integer(card: Card) -> Self {
         TypeSpec {
-            type_def: Type::Type(ValueType::integer()),
-            card: None,
+            type_def: Type::Type(ValueType::integer(card)),
         }
     }
 
-    pub fn date() -> Self {
+    pub fn date(card: Card) -> Self {
         TypeSpec {
-            type_def: Type::Type(ValueType::date()),
-            card: None,
+            type_def: Type::Type(ValueType::date(card)),
         }
     }
 
-    pub fn zero_or_more(self) -> Self {
-        TypeSpec {
-            type_def: self.type_def,
-            card: Some(Card::ZeroOrMore),
-        }
+    pub fn to_value_type(&self) -> ValueType {
+        self.type_def.to_value_type()
     }
 }
 
@@ -123,16 +141,23 @@ enum Type {
     Conjunction(Box<Type>, Box<Type>),
     Disjunction(Box<Type>, Box<Type>),
     Type(ValueType),
-    Cond(ValueType, Cond),
+    Cond(ValueType, BooleanExpr),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-enum Cond {
-    True,
-    False,
-    Not(Box<Cond>),
-    And(Box<Cond>, Box<Cond>),
-    Or(Box<Cond>, Box<Cond>),
-    GreaterThan(Value),
-    Equals(Value),
+impl Type {
+    pub fn to_value_type(&self) -> ValueType {
+        match self {
+            Type::Type(value_type) => value_type.clone(),
+            Type::Conjunction(a, b) => {
+                let avt: ValueType = (*a).to_value_type();
+                let bvt: ValueType = (*b).to_value_type();
+                ValueType::intersection(avt, bvt)
+            }
+            Type::Disjunction(a, b) => ValueType::union(a.to_value_type(), b.to_value_type()),
+            Type::Cond(value_type, cond) => {
+                let vt_cond = ValueType::cond(cond.clone());
+                ValueType::intersection(value_type.clone(), vt_cond)
+            }
+        }
+    }
 }
