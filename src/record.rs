@@ -9,6 +9,9 @@ pub struct Record {
 }
 
 impl Record {
+    pub fn keys(&self) -> Set<&Key> {
+        self.map.keys().collect()
+    }
     pub fn new() -> Self {
         Record {
             map: HashMap::new(),

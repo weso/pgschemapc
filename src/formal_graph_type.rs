@@ -17,6 +17,15 @@ impl FormalGraphType {
         }
     }
 
+    pub fn with_type_name(
+        mut self,
+        type_name: &str,
+        label_property_spec: LabelPropertySpec,
+    ) -> Self {
+        self.map.insert(type_name.to_string(), label_property_spec);
+        self
+    }
+
     pub fn add(&mut self, type_name: TypeName, label_property_spec: LabelPropertySpec) {
         self.map.insert(type_name, label_property_spec);
     }

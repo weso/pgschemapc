@@ -28,7 +28,11 @@ impl PropertyValueSpec {
     pub fn semantics(&self) -> Result<FormalBaseType, SemanticsError> {
         let content_semantics = match self {
             PropertyValueSpec::Closed(pv) => pv.semantics(),
-            PropertyValueSpec::Open(pv) => pv.semantics(),
+            PropertyValueSpec::Open(pv) => {
+                let open_semantics: HashSet<_> =
+                    pv.semantics().into_iter().map(|v| v.with_open()).collect();
+                open_semantics
+            }
         };
         Ok(FormalBaseType::new().with_content(content_semantics))
     }
@@ -54,6 +58,14 @@ impl PropertyValue {
 
     pub fn each_of(left: PropertyValue, right: PropertyValue) -> Self {
         PropertyValue::EachOf(Box::new(left), Box::new(right))
+    }
+
+    pub fn one_of(left: PropertyValue, right: PropertyValue) -> Self {
+        PropertyValue::OneOf(Box::new(left), Box::new(right))
+    }
+
+    pub fn empty() -> Self {
+        PropertyValue::Empty
     }
 
     pub fn semantics(&self) -> HashSet<RecordType> {
@@ -99,12 +111,12 @@ fn union_semantics_sets(
     left: HashSet<RecordType>,
     right: HashSet<RecordType>,
 ) -> HashSet<RecordType> {
-    // TODO: Replace by union semantics
     let mut combined = HashSet::new();
     for l in left {
-        for r in &right {
-            combined.insert(l.combine(r));
-        }
+        combined.insert(l);
+    }
+    for r in right {
+        combined.insert(r);
     }
     combined
 }

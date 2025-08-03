@@ -27,6 +27,33 @@ impl LabelPropertySpec {
     pub fn label(label: Name) -> Self {
         LabelPropertySpec::Label(label)
     }
+    pub fn optional(label_property_spec: LabelPropertySpec) -> Self {
+        LabelPropertySpec::Optional(Box::new(label_property_spec))
+    }
+    pub fn and(
+        label_property_spec: LabelPropertySpec,
+        label_property_spec1: LabelPropertySpec,
+    ) -> Self {
+        LabelPropertySpec::And(
+            Box::new(label_property_spec),
+            Box::new(label_property_spec1),
+        )
+    }
+    pub fn or(
+        label_property_spec: LabelPropertySpec,
+        label_property_spec1: LabelPropertySpec,
+    ) -> Self {
+        LabelPropertySpec::Or(
+            Box::new(label_property_spec),
+            Box::new(label_property_spec1),
+        )
+    }
+    pub fn open(label_property_spec: LabelPropertySpec) -> Self {
+        LabelPropertySpec::Open(Box::new(label_property_spec))
+    }
+    pub fn ref_(type_name: TypeName) -> Self {
+        LabelPropertySpec::Ref(type_name)
+    }
 
     pub fn content(
         label_property_spec: LabelPropertySpec,
@@ -62,7 +89,10 @@ impl LabelPropertySpec {
                 let base_type1 = label_property_spec1.semantics(graph_type)?;
                 Ok(base_type.union(&base_type1))
             }
-            LabelPropertySpec::Open(label_property_spec) => todo!(),
+            LabelPropertySpec::Open(label_property_spec) => {
+                let base_type = label_property_spec.semantics(graph_type)?;
+                Ok(base_type.with_open())
+            }
             LabelPropertySpec::Content(label_property_spec, property_value_spec) => {
                 let base_type = label_property_spec.semantics(graph_type)?;
                 let property_value_semantics = property_value_spec.semantics()?;

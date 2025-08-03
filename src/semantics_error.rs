@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use thiserror::Error;
 
 use crate::{TypeName, card::Card, key::Key, value::Value};
@@ -18,4 +20,10 @@ pub enum SemanticsError {
         predicate_name: String,
         value: Value,
     },
+
+    #[error("Missing keys in record type: {record_type}, keys: {keys:?}")]
+    MissingKeys { keys: String, record_type: String },
+
+    #[error("Extra keys in closed record type: {record_type}, keys: {keys:?}")]
+    ExtraKeysNotOpen { keys: String, record_type: String },
 }

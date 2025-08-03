@@ -7,6 +7,7 @@ use crate::{
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FormalBaseType {
     labels: HashSet<LabelName>,
+    open_labels: bool,
     content: HashSet<RecordType>, // Define the structure of FormalBaseType as needed
 }
 
@@ -15,8 +16,14 @@ impl FormalBaseType {
     pub fn new() -> Self {
         FormalBaseType {
             labels: HashSet::new(),
+            open_labels: false,
             content: HashSet::new(),
         }
+    }
+
+    pub fn with_open(mut self) -> Self {
+        self.open_labels = true;
+        self
     }
 
     /// Adds a label to the FormalBaseType.
@@ -50,10 +57,11 @@ impl FormalBaseType {
         content: &Record,
     ) -> Result<bool, SemanticsError> {
         if self.labels != *labels {
+            // TODO: Check openness of labels
             return Ok(false);
         }
         for record_type in &self.content {
-            if record_type.conforms(content, true).is_right() {
+            if record_type.conforms(content).is_right() {
                 return Ok(true);
             }
         }
@@ -87,7 +95,11 @@ impl FormalBaseType {
     pub fn combine(&self, other: &FormalBaseType) -> Self {
         let labels: HashSet<_> = self.labels.union(&other.labels).cloned().collect();
         let content = combine_set_records(&self.content, &other.content);
-        FormalBaseType { labels, content }
+        FormalBaseType {
+            labels,
+            open_labels: combine_openness(self.open_labels, other.open_labels),
+            content,
+        }
     }
 
     pub fn type_0() -> FormalBaseType {
@@ -95,9 +107,14 @@ impl FormalBaseType {
         content.insert(RecordType::empty());
         FormalBaseType {
             labels: HashSet::new(),
+            open_labels: false,
             content,
         }
     }
+}
+
+fn combine_openness(open1: bool, open2: bool) -> bool {
+    open1 || open2
 }
 
 fn combine_set_records(
