@@ -3,8 +3,8 @@ use std::{collections::HashSet, fmt::Display};
 use either::Either;
 
 use crate::{
-    Value, boolean_expr::BooleanExpr, card::Card, evidence::Evidence,
-    semantics_error::SemanticsError,
+    boolean_expr::BooleanExpr, card::Card, evidence::Evidence, semantics_error::SemanticsError,
+    value::Value,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

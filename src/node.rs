@@ -1,6 +1,6 @@
 use std::{collections::HashSet, fmt::Display};
 
-use crate::{LabelName, node_id::NodeId, record::Record};
+use crate::{node_id::NodeId, record::Record, type_name::LabelName};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Node {

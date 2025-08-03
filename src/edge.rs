@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use crate::{LabelName, node_id::NodeId, record::Record};
+use crate::{node_id::NodeId, record::Record, type_name::LabelName};
 
 pub struct Edge {
     pub id: NodeId,

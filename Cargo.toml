@@ -2,11 +2,22 @@
 name = "pgschemapc"
 version = "0.1.0"
 edition = "2024"
+license = "MIT"
+description = "Prototype for PG-SChema with property constraints"
+homepage = "https://github.com/wesopapers/pgschemapc"
+repository = "https://github.com/wesopapers/pgschemapc"
+keywords = ["pgschema", "property graphs", "property constraints"]
+categories = ["command-line-utilities", "property-graphs", "pg-schema"]
 
 [dependencies]
 either = "1.15.0"
+rustemo = "0.7.1"
 thiserror = "2.0.12"
 tracing = "0.1.41"
 
 [dev-dependencies]
 tracing-test = "0.2.5"
+rustemo-compiler = "0.7.0"
+
+[build-dependencies]
+rustemo-compiler = "0.7.0"

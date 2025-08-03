@@ -12,6 +12,7 @@ mod property_value_spec;
 mod record;
 mod record_type;
 mod semantics_error;
+mod type_name;
 mod value;
 mod value_type;
 
@@ -27,10 +28,6 @@ use crate::{
     value_type::ValueType,
 };
 use std::collections::HashSet;
-
-pub type Name = String;
-pub type LabelName = String;
-pub type TypeName = String;
 
 // src/main.rs
 fn main() {

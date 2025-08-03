@@ -1,7 +1,10 @@
 use std::collections::HashSet;
 
 use crate::{
-    LabelName, Name, record::Record, record_type::RecordType, semantics_error::SemanticsError,
+    record::Record,
+    record_type::RecordType,
+    semantics_error::SemanticsError,
+    type_name::{LabelName, Name},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]

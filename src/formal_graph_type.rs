@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use crate::{
-    TypeName, label_property_spec::LabelPropertySpec, node::Node, record::Record,
-    semantics_error::SemanticsError,
+    label_property_spec::LabelPropertySpec, node::Node, record::Record,
+    semantics_error::SemanticsError, type_name::TypeName,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]

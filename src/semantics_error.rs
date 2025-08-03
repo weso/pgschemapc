@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use thiserror::Error;
 
-use crate::{TypeName, card::Card, key::Key, value::Value};
+use crate::{card::Card, key::Key, type_name::TypeName, value::Value};
 
 #[derive(Error, Debug, PartialEq)]
 pub enum SemanticsError {

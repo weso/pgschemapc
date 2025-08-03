@@ -1,0 +1,9 @@
+pgs:
+    create_type * ;
+
+create_type: 
+    CREATE ;
+    
+terminals
+
+CREATE: "CREATE" ;

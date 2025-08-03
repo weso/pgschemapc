@@ -173,7 +173,7 @@ fn non_empty<T>(set: &HashSet<T>) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Value, card::Card, value_type::ValueType};
+    use crate::{card::Card, value::Value, value_type::ValueType};
 
     use super::*;
 

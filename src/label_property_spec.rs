@@ -3,12 +3,12 @@ use std::collections::{HashMap, HashSet};
 use thiserror::Error;
 
 use crate::{
-    Name, TypeName,
     formal_base_type::FormalBaseType,
     formal_graph_type::FormalGraphType,
     property_value_spec::{PropertyValue, PropertyValueSpec},
     record_type::RecordType,
     semantics_error::SemanticsError,
+    type_name::{Name, TypeName},
 };
 
 // In the PGSchema paper, LabelPropertySpec is denoted by F
