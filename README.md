@@ -1,3 +1,5 @@
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.16738599.svg)](https://doi.org/10.5281/zenodo.16738599)
+
 # PG-Schema_PC
 
 This repository contains a prototype implementation for the PG-Schema with Property Constraints extension.
