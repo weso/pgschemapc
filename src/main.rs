@@ -9,10 +9,10 @@ mod key;
 mod label_property_spec;
 mod node;
 mod node_id;
+mod pgs_error;
 mod property_value_spec;
 mod record;
 mod record_type;
-mod semantics_error;
 mod type_name;
 mod value;
 mod value_type;
@@ -31,7 +31,7 @@ use crate::{
 use anyhow::*;
 use clap::Parser;
 use cli::{Cli, Command};
-use pgschemapc::parser::pgs::PgsParser;
+use pgschemapc::parser::{pg_builder::PgBuilder, pgs::PgsParser};
 use rustemo::Parser as RustEmoParser;
 use std::collections::HashSet;
 use std::result::Result::Ok;
@@ -107,12 +107,10 @@ fn run_pgs(schema: &str) -> Result<()> {
         .with_context(|| format!("Failed to read schema file: {}", schema))?;
 
     // Parse the schema:
-    match PgsParser::new().parse(schema_content.as_str()) {
+    match PgBuilder::new().parse_pgs(schema_content.as_str()) {
         Ok(graph_type) => {
             // Successfully parsed the schema, now we can work with `graph_type`.
-            println!("Parsed graph type: {:?}", graph_type);
-            // Print the parsed graph type:
-            println!("{:?}", graph_type);
+            println!("Parsed graph type: {}", graph_type);
             Ok(())
         }
         Err(e) => {

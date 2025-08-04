@@ -1,9 +1,9 @@
 use std::collections::HashSet;
 
 use crate::{
+    pgs_error::PgsError,
     record::Record,
     record_type::RecordType,
-    semantics_error::SemanticsError,
     type_name::{LabelName, Name},
 };
 
@@ -58,7 +58,7 @@ impl FormalBaseType {
         &self,
         labels: &HashSet<LabelName>,
         content: &Record,
-    ) -> Result<bool, SemanticsError> {
+    ) -> Result<bool, PgsError> {
         if self.labels != *labels {
             // TODO: Check openness of labels
             return Ok(false);

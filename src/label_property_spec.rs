@@ -1,19 +1,23 @@
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    fmt::Display,
+};
 
 use thiserror::Error;
 
 use crate::{
     formal_base_type::FormalBaseType,
     formal_graph_type::FormalGraphType,
+    pgs_error::PgsError,
     property_value_spec::{PropertyValue, PropertyValueSpec},
     record_type::RecordType,
-    semantics_error::SemanticsError,
     type_name::{Name, TypeName},
 };
 
 // In the PGSchema paper, LabelPropertySpec is denoted by F
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LabelPropertySpec {
+    Empty,
     Label(Name),
     Ref(TypeName),
     Optional(Box<LabelPropertySpec>),
@@ -24,6 +28,10 @@ pub enum LabelPropertySpec {
 }
 
 impl LabelPropertySpec {
+    pub fn new() -> Self {
+        LabelPropertySpec::Empty
+    }
+
     pub fn label(label: Name) -> Self {
         LabelPropertySpec::Label(label)
     }
@@ -62,17 +70,15 @@ impl LabelPropertySpec {
         LabelPropertySpec::Content(Box::new(label_property_spec), property_value_spec)
     }
 
-    pub fn semantics(
-        &self,
-        graph_type: &FormalGraphType,
-    ) -> Result<FormalBaseType, SemanticsError> {
+    pub fn semantics(&self, graph_type: &FormalGraphType) -> Result<FormalBaseType, PgsError> {
         match self {
+            LabelPropertySpec::Empty => Ok(FormalBaseType::type_0()),
             LabelPropertySpec::Label(label) => Ok(FormalBaseType::from_label(label.clone())),
             LabelPropertySpec::Ref(type_name) => {
                 if let Some(label_property_spec) = graph_type.get(type_name) {
                     label_property_spec.semantics(graph_type)
                 } else {
-                    Err(SemanticsError::MissingType(type_name.clone()))
+                    Err(PgsError::MissingType(type_name.clone()))
                 }
             }
             LabelPropertySpec::Optional(label_property_spec) => {
@@ -103,6 +109,23 @@ impl LabelPropertySpec {
     }
 }
 
+impl Display for LabelPropertySpec {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            LabelPropertySpec::Empty => write!(f, "Empty"),
+            LabelPropertySpec::Label(label) => write!(f, "Label({})", label),
+            LabelPropertySpec::Ref(type_name) => write!(f, "Ref({})", type_name),
+            LabelPropertySpec::Optional(spec) => write!(f, "Optional({})", spec),
+            LabelPropertySpec::And(left, right) => write!(f, "And({}, {})", left, right),
+            LabelPropertySpec::Or(left, right) => write!(f, "Or({}, {})", left, right),
+            LabelPropertySpec::Open(spec) => write!(f, "Open({})", spec),
+            LabelPropertySpec::Content(spec, value_spec) => {
+                write!(f, "Content({}, {})", spec, value_spec)
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{card::Card, key::Key, property_value_spec::TypeSpec, value_type::ValueType};
@@ -117,7 +140,7 @@ mod tests {
         let age = PropertyValue::property(Key::new("age"), TypeSpec::integer(Card::One));
         let person_content = PropertyValue::each_of(name, age);
         graph.add(
-            "PersonType".to_string(),
+            "PersonType",
             LabelPropertySpec::content(person_label, PropertyValueSpec::closed(person_content)),
         );
 

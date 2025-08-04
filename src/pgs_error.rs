@@ -5,7 +5,7 @@ use thiserror::Error;
 use crate::{card::Card, key::Key, type_name::TypeName, value::Value};
 
 #[derive(Error, Debug, PartialEq)]
-pub enum SemanticsError {
+pub enum PgsError {
     #[error("Not found type: {0}")]
     MissingType(TypeName),
 
@@ -26,4 +26,7 @@ pub enum SemanticsError {
 
     #[error("Extra keys in closed record type: {record_type}, keys: {keys:?}")]
     ExtraKeysNotOpen { keys: String, record_type: String },
+
+    #[error("Parser error: {error}")]
+    ParserError { error: String },
 }

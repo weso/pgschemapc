@@ -3,8 +3,8 @@ use tracing::debug;
 
 use crate::evidence::Evidence;
 use crate::key::Key;
+use crate::pgs_error::PgsError;
 use crate::record::Record;
-use crate::semantics_error::SemanticsError;
 use crate::value_type::ValueType;
 use std::collections::{BTreeMap, HashSet};
 use std::fmt::Display;
@@ -44,7 +44,7 @@ impl RecordType {
     }
 
     /// Checks if the RecordType conforms to the given Record.
-    pub fn conforms(&self, record: &Record) -> Either<Vec<SemanticsError>, Vec<Evidence>> {
+    pub fn conforms(&self, record: &Record) -> Either<Vec<PgsError>, Vec<Evidence>> {
         debug!(
             "Checking conformance of record: {} with {} open? {}",
             record, self, self.open
@@ -62,7 +62,7 @@ impl RecordType {
                 "No conforms with missing keys: {:?}",
                 missing_record_type_keys
             );
-            return Left(vec![SemanticsError::MissingKeys {
+            return Left(vec![PgsError::MissingKeys {
                 keys: format!("{:?}", missing_record_type_keys),
                 record_type: self.to_string(),
             }]);
@@ -72,7 +72,7 @@ impl RecordType {
                 "No conforms with extra keys: {:?} and not open",
                 extra_record_keys
             );
-            return Left(vec![SemanticsError::ExtraKeysNotOpen {
+            return Left(vec![PgsError::ExtraKeysNotOpen {
                 keys: format!("{:?}", extra_record_keys),
                 record_type: self.to_string(),
             }]);
@@ -96,7 +96,7 @@ impl RecordType {
                 // In principle, this should not happen as the keys are checked first
                 // but we handle it anyway
                 if !self.open {
-                    return Either::Left(vec![SemanticsError::KeyNotFoundClosedRecordType {
+                    return Either::Left(vec![PgsError::KeyNotFoundClosedRecordType {
                         key: key.clone(),
                         record_type: self.to_string(),
                     }]); // Key not found in RecordType and open is false

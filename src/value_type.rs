@@ -3,8 +3,7 @@ use std::{collections::HashSet, fmt::Display};
 use either::Either;
 
 use crate::{
-    boolean_expr::BooleanExpr, card::Card, evidence::Evidence, semantics_error::SemanticsError,
-    value::Value,
+    boolean_expr::BooleanExpr, card::Card, evidence::Evidence, pgs_error::PgsError, value::Value,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -38,11 +37,11 @@ impl ValueType {
     pub fn cond(expr: BooleanExpr) -> Self {
         ValueType::Cond(expr)
     }
-    pub fn conforms(&self, values: &HashSet<Value>) -> Either<Vec<SemanticsError>, Vec<Evidence>> {
+    pub fn conforms(&self, values: &HashSet<Value>) -> Either<Vec<PgsError>, Vec<Evidence>> {
         match self {
             ValueType::StringType(card) => {
                 if !card.contains(values.len()) {
-                    return Either::Left(vec![SemanticsError::CardinalityMismatch {
+                    return Either::Left(vec![PgsError::CardinalityMismatch {
                         expected: card.clone(),
                         count: values.len(),
                     }]);
@@ -51,7 +50,7 @@ impl ValueType {
             }
             ValueType::IntegerType(card) => {
                 if !card.contains(values.len()) {
-                    return Either::Left(vec![SemanticsError::CardinalityMismatch {
+                    return Either::Left(vec![PgsError::CardinalityMismatch {
                         expected: card.clone(),
                         count: values.len(),
                     }]);
@@ -60,7 +59,7 @@ impl ValueType {
             }
             ValueType::DateType(card) => {
                 if !card.contains(values.len()) {
-                    return Either::Left(vec![SemanticsError::CardinalityMismatch {
+                    return Either::Left(vec![PgsError::CardinalityMismatch {
                         expected: card.clone(),
                         count: values.len(),
                     }]);
@@ -78,14 +77,14 @@ fn check_all<F>(
     values: &HashSet<Value>,
     predicate: F,
     predicate_name: &str,
-) -> Either<Vec<SemanticsError>, Vec<Evidence>>
+) -> Either<Vec<PgsError>, Vec<Evidence>>
 where
     F: Fn(&Value) -> bool,
 {
     if values.iter().all(&predicate) {
         Either::Right(vec![]) // All values conform
     } else {
-        Either::Left(vec![SemanticsError::PredicateFailed {
+        Either::Left(vec![PgsError::PredicateFailed {
             predicate_name: predicate_name.to_string(),
             value: values
                 .iter()

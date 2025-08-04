@@ -103,7 +103,7 @@ mod tests {
             PropertyValue::property(Key::new("aliases"), TypeSpec::string(Card::ZeroOrMore));
         let person_content = PropertyValue::each_of(name, PropertyValue::each_of(age, aliases));
         graph.add(
-            "PersonType".to_string(),
+            "PersonType",
             LabelPropertySpec::content(person_label, PropertyValueSpec::closed(person_content)),
         );
 
@@ -145,7 +145,7 @@ mod tests {
             PropertyValue::property(Key::new("aliases"), TypeSpec::string(Card::ZeroOrMore));
         let person_content = PropertyValue::each_of(name, PropertyValue::each_of(age, aliases));
         graph.add(
-            "PersonType".to_string(),
+            "PersonType",
             LabelPropertySpec::content(person_label, PropertyValueSpec::closed(person_content)),
         );
         assert_eq!(
@@ -177,7 +177,7 @@ mod tests {
             PropertyValue::property(Key::new("aliases"), TypeSpec::string(Card::ZeroOrMore));
         let person_content = PropertyValue::each_of(name, PropertyValue::each_of(age, aliases));
         graph.add(
-            "PersonType".to_string(),
+            "PersonType",
             LabelPropertySpec::content(person_label, PropertyValueSpec::closed(person_content)),
         );
         assert_eq!(

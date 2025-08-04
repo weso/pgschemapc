@@ -1,1 +1,4 @@
-CREATE NODE TYPE ( personType : Person ) ;
+CREATE NODE TYPE ( personType : Person {
+    name: STRING,
+    age: INTEGER
+}) ;

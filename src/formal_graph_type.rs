@@ -1,8 +1,8 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::Display};
 
 use crate::{
-    label_property_spec::LabelPropertySpec, node::Node, record::Record,
-    semantics_error::SemanticsError, type_name::TypeName,
+    label_property_spec::LabelPropertySpec, node::Node, pgs_error::PgsError, record::Record,
+    type_name::TypeName,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -26,20 +26,29 @@ impl FormalGraphType {
         self
     }
 
-    pub fn add(&mut self, type_name: TypeName, label_property_spec: LabelPropertySpec) {
-        self.map.insert(type_name, label_property_spec);
+    pub fn add(&mut self, type_name: &str, label_property_spec: LabelPropertySpec) {
+        self.map.insert(type_name.to_string(), label_property_spec);
     }
 
     pub fn get(&self, type_name: &str) -> Option<&LabelPropertySpec> {
         self.map.get(type_name)
     }
 
-    pub fn conforms_node(&self, type_name: &TypeName, node: &Node) -> Result<bool, SemanticsError> {
+    pub fn conforms_node(&self, type_name: &TypeName, node: &Node) -> Result<bool, PgsError> {
         if let Some(label_property_spec) = self.get(type_name) {
             let base_type = label_property_spec.semantics(self)?;
             base_type.conforms(node.labels(), node.content())
         } else {
-            Err(SemanticsError::MissingType(type_name.clone()))
+            Err(PgsError::MissingType(type_name.clone()))
         }
+    }
+}
+
+impl Display for FormalGraphType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for (key, value) in self.map.iter() {
+            writeln!(f, "{}: {}", key, value)?;
+        }
+        Ok(())
     }
 }

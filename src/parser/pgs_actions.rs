@@ -104,10 +104,113 @@ pub fn endpoint_type_label_property_spec(
 ) -> EndpointType {
     label_property_spec
 }
-pub type LabelPropertySpec = IDENTIFIER;
-pub fn label_property_spec_identifier(
+#[derive(Debug, Clone)]
+pub struct LabelPropertySpec {
+    pub label_spec_opt: LabelSpecOpt,
+    pub property_spec_opt: PropertySpecOpt,
+}
+pub fn label_property_spec_c1(
     _ctx: &Ctx,
-    identifier: IDENTIFIER,
+    label_spec_opt: LabelSpecOpt,
+    property_spec_opt: PropertySpecOpt,
 ) -> LabelPropertySpec {
+    LabelPropertySpec {
+        label_spec_opt,
+        property_spec_opt,
+    }
+}
+pub type LabelSpecOpt = Option<LabelSpec>;
+pub fn label_spec_opt_label_spec(_ctx: &Ctx, label_spec: LabelSpec) -> LabelSpecOpt {
+    Some(label_spec)
+}
+pub fn label_spec_opt_empty(_ctx: &Ctx) -> LabelSpecOpt {
+    None
+}
+pub type PropertySpecOpt = Option<PropertySpec>;
+pub fn property_spec_opt_property_spec(
+    _ctx: &Ctx,
+    property_spec: PropertySpec,
+) -> PropertySpecOpt {
+    Some(property_spec)
+}
+pub fn property_spec_opt_empty(_ctx: &Ctx) -> PropertySpecOpt {
+    None
+}
+pub type LabelSpec = IDENTIFIER;
+pub fn label_spec_identifier(_ctx: &Ctx, identifier: IDENTIFIER) -> LabelSpec {
     identifier
+}
+pub type PropertySpec = Properties;
+pub fn property_spec_properties(_ctx: &Ctx, properties: Properties) -> PropertySpec {
+    properties
+}
+#[derive(Debug, Clone)]
+pub struct EachOf {
+    pub left: Box<Properties>,
+    pub right: Box<Properties>,
+}
+#[derive(Debug, Clone)]
+pub struct OneOf {
+    pub left: Box<Properties>,
+    pub right: Box<Properties>,
+}
+#[derive(Debug, Clone)]
+pub enum Properties {
+    EachOf(EachOf),
+    OneOf(OneOf),
+    Paren(Box<Properties>),
+    Property(Property),
+}
+pub fn properties_each_of(
+    _ctx: &Ctx,
+    left: Properties,
+    right: Properties,
+) -> Properties {
+    Properties::EachOf(EachOf {
+        left: Box::new(left),
+        right: Box::new(right),
+    })
+}
+pub fn properties_one_of(_ctx: &Ctx, left: Properties, right: Properties) -> Properties {
+    Properties::OneOf(OneOf {
+        left: Box::new(left),
+        right: Box::new(right),
+    })
+}
+pub fn properties_paren(_ctx: &Ctx, properties: Properties) -> Properties {
+    Properties::Paren(Box::new(properties))
+}
+pub fn properties_property(_ctx: &Ctx, property: Property) -> Properties {
+    Properties::Property(property)
+}
+#[derive(Debug, Clone)]
+pub struct Property {
+    pub key: key,
+    pub type_spec: TypeSpec,
+}
+pub fn property_c1(_ctx: &Ctx, key: key, type_spec: TypeSpec) -> Property {
+    Property { key, type_spec }
+}
+pub type key = IDENTIFIER;
+pub fn key_identifier(_ctx: &Ctx, identifier: IDENTIFIER) -> key {
+    identifier
+}
+pub type TypeSpec = SimpleType;
+pub fn type_spec_simple_type(_ctx: &Ctx, simple_type: SimpleType) -> TypeSpec {
+    simple_type
+}
+#[derive(Debug, Clone)]
+pub enum SimpleType {
+    STRING_NAME,
+    INTEGER_NAME,
+    DATE_NAME,
+}
+pub fn simple_type_string_name(_ctx: &Ctx) -> SimpleType {
+    SimpleType::STRING_NAME
+}
+pub fn simple_type_integer_name(_ctx: &Ctx) -> SimpleType {
+    SimpleType::INTEGER_NAME
+}
+pub fn simple_type_date_name(_ctx: &Ctx) -> SimpleType {
+    SimpleType::DATE_NAME
 }

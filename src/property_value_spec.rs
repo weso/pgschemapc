@@ -6,9 +6,10 @@ use crate::formal_base_type::FormalBaseType;
 use crate::key::Key;
 use crate::record_type::RecordType;
 
-use crate::semantics_error::SemanticsError;
+use crate::pgs_error::PgsError;
 use crate::value_type::ValueType;
 use std::collections::HashSet;
+use std::fmt::Display;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PropertyValueSpec {
@@ -25,7 +26,7 @@ impl PropertyValueSpec {
         PropertyValueSpec::Closed(property_value)
     }
 
-    pub fn semantics(&self) -> Result<FormalBaseType, SemanticsError> {
+    pub fn semantics(&self) -> Result<FormalBaseType, PgsError> {
         let content_semantics = match self {
             PropertyValueSpec::Closed(pv) => pv.semantics(),
             PropertyValueSpec::Open(pv) => {
@@ -94,6 +95,20 @@ impl PropertyValue {
     }
 }
 
+impl Display for PropertyValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            PropertyValue::EachOf(left, right) => write!(f, "{} , {}", left, right),
+            PropertyValue::OneOf(left, right) => write!(f, "({} | {})", left, right),
+            PropertyValue::Property(key, type_spec) => write!(f, "{}: {}", key, type_spec),
+            PropertyValue::OptionalProperty(key, type_spec) => {
+                write!(f, "{}: {} (optional)", key, type_spec)
+            }
+            PropertyValue::Empty => write!(f, "Empty"),
+        }
+    }
+}
+
 fn combine_semantics_sets(
     left: HashSet<RecordType>,
     right: HashSet<RecordType>,
@@ -123,6 +138,15 @@ fn union_semantics_sets(
 
 impl PropertyValueSpec {}
 
+impl Display for PropertyValueSpec {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            PropertyValueSpec::Closed(pv) => write!(f, "{}", pv),
+            PropertyValueSpec::Open(pv) => write!(f, "{} OPEN", pv),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TypeSpec {
     type_def: Type,
@@ -149,6 +173,12 @@ impl TypeSpec {
 
     pub fn to_value_type(&self) -> ValueType {
         self.type_def.to_value_type()
+    }
+}
+
+impl Display for TypeSpec {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.type_def.to_value_type())
     }
 }
 

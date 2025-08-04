@@ -29,7 +29,33 @@ EndpointType:
     "(" LabelPropertySpec ")" ;
 
 LabelPropertySpec:
+    LabelSpec? PropertySpec? ;
+
+LabelSpec:
     ":" IDENTIFIER ;
+
+PropertySpec:
+    OPEN_CURLY Properties CLOSE_CURLY ;
+
+Properties:
+      left=Properties "," right=Properties {EachOf, 1, left} 
+    | left=Properties "|" right=Properties {OneOf, 2, left} 
+    | '(' Properties ')' {Paren}
+    | Property 
+    ;
+
+Property:
+    key ":" TypeSpec ;
+
+key:
+    IDENTIFIER ;
+
+TypeSpec:
+    SimpleType ;
+
+SimpleType:    
+    STRING_NAME | INTEGER_NAME | DATE_NAME ;
+
 
 /*endpoint_type:
     "(" label_property_spec ")" ;
@@ -86,3 +112,18 @@ CLOSE_CURLY:
 
 COLON:
     ":" ;
+
+COMMA:
+    "," ;
+
+BAR:
+    "|" ;
+
+INTEGER_NAME:
+    "INTEGER" ;
+
+STRING_NAME:
+    "STRING" ;
+
+DATE_NAME:
+    "DATE" ;
