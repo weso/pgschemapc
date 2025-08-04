@@ -19,6 +19,12 @@ The following command compiles and runs the simple command line tool:
 cargo run
 ```
 
+As an example, it is possible to run a simple example as:
+
+```sh
+cargo run pgs --schema examples/simple.pgs
+```
+
 ## Running the tests
 
 To run a test suite or validate your own PG-Schema definitions, use the provided command:
