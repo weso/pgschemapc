@@ -41,11 +41,11 @@ Properties:
       left=Properties "," right=Properties {EachOf, 1, left} 
     | left=Properties "|" right=Properties {OneOf, 2, left} 
     | '(' Properties ')' {Paren}
-    | Property 
+    | "OPTIONAL"? Property {BaseProperty}
     ;
 
 Property:
-    key ":" TypeSpec ;
+    key ":" TypeSpec Card ? ;
 
 key:
     IDENTIFIER ;
@@ -56,6 +56,15 @@ TypeSpec:
 SimpleType:    
     STRING_NAME | INTEGER_NAME | DATE_NAME ;
 
+Card: 
+    "?" {Optional} 
+    | "+" {OneOrMore} 
+    | "*" {ZeroOrMore}
+    | "{" Number "," Max "}" {Range} ;
+
+Max:
+    Number | 
+    "*" {Star};
 
 /*endpoint_type:
     "(" label_property_spec ")" ;
@@ -119,6 +128,15 @@ COMMA:
 BAR:
     "|" ;
 
+PLUS:
+    "+" ;
+
+STAR:
+    "*" ;
+
+QUESTION:
+    "?" ;
+
 INTEGER_NAME:
     "INTEGER" ;
 
@@ -127,3 +145,9 @@ STRING_NAME:
 
 DATE_NAME:
     "DATE" ;
+
+Number:
+    /\d+/ ;
+
+OPTIONAL:
+    "OPTIONAL" ;

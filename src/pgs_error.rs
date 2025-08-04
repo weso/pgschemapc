@@ -6,6 +6,9 @@ use crate::{card::Card, key::Key, type_name::TypeName, value::Value};
 
 #[derive(Error, Debug, PartialEq)]
 pub enum PgsError {
+    #[error("Error parsing as number: {0}")]
+    InvalidNumber(String),
+
     #[error("Not found type: {0}")]
     MissingType(TypeName),
 

@@ -10,6 +10,10 @@ pub type IDENTIFIER = String;
 pub fn identifier(_ctx: &Ctx, token: Token) -> IDENTIFIER {
     token.value.into()
 }
+pub type Number = String;
+pub fn number(_ctx: &Ctx, token: Token) -> Number {
+    token.value.into()
+}
 pub type Pgs = CreateType;
 pub fn pgs_create_type(_ctx: &Ctx, create_type: CreateType) -> Pgs {
     create_type
@@ -155,11 +159,16 @@ pub struct OneOf {
     pub right: Box<Properties>,
 }
 #[derive(Debug, Clone)]
+pub struct BaseProperty {
+    pub optionalopt: OPTIONALOpt,
+    pub property: Property,
+}
+#[derive(Debug, Clone)]
 pub enum Properties {
     EachOf(EachOf),
     OneOf(OneOf),
     Paren(Box<Properties>),
-    Property(Property),
+    BaseProperty(BaseProperty),
 }
 pub fn properties_each_of(
     _ctx: &Ctx,
@@ -180,16 +189,51 @@ pub fn properties_one_of(_ctx: &Ctx, left: Properties, right: Properties) -> Pro
 pub fn properties_paren(_ctx: &Ctx, properties: Properties) -> Properties {
     Properties::Paren(Box::new(properties))
 }
-pub fn properties_property(_ctx: &Ctx, property: Property) -> Properties {
-    Properties::Property(property)
+pub fn properties_base_property(
+    _ctx: &Ctx,
+    optionalopt: OPTIONALOpt,
+    property: Property,
+) -> Properties {
+    Properties::BaseProperty(BaseProperty {
+        optionalopt,
+        property,
+    })
+}
+pub type OPTIONALOpt = Option<OptionalOptNoO>;
+#[derive(Debug, Clone)]
+pub enum OptionalOptNoO {
+    OPTIONAL,
+}
+pub fn optionalopt_optional(_ctx: &Ctx) -> OPTIONALOpt {
+    Some(OptionalOptNoO::OPTIONAL)
+}
+pub fn optionalopt_empty(_ctx: &Ctx) -> OPTIONALOpt {
+    None
 }
 #[derive(Debug, Clone)]
 pub struct Property {
     pub key: key,
     pub type_spec: TypeSpec,
+    pub card_opt: CardOpt,
 }
-pub fn property_c1(_ctx: &Ctx, key: key, type_spec: TypeSpec) -> Property {
-    Property { key, type_spec }
+pub fn property_c1(
+    _ctx: &Ctx,
+    key: key,
+    type_spec: TypeSpec,
+    card_opt: CardOpt,
+) -> Property {
+    Property {
+        key,
+        type_spec,
+        card_opt,
+    }
+}
+pub type CardOpt = Option<Card>;
+pub fn card_opt_card(_ctx: &Ctx, card: Card) -> CardOpt {
+    Some(card)
+}
+pub fn card_opt_empty(_ctx: &Ctx) -> CardOpt {
+    None
 }
 pub type key = IDENTIFIER;
 pub fn key_identifier(_ctx: &Ctx, identifier: IDENTIFIER) -> key {
@@ -213,4 +257,39 @@ pub fn simple_type_integer_name(_ctx: &Ctx) -> SimpleType {
 }
 pub fn simple_type_date_name(_ctx: &Ctx) -> SimpleType {
     SimpleType::DATE_NAME
+}
+#[derive(Debug, Clone)]
+pub struct Range {
+    pub number: Number,
+    pub max: Max,
+}
+#[derive(Debug, Clone)]
+pub enum Card {
+    Optional,
+    OneOrMore,
+    ZeroOrMore,
+    Range(Range),
+}
+pub fn card_optional(_ctx: &Ctx) -> Card {
+    Card::Optional
+}
+pub fn card_one_or_more(_ctx: &Ctx) -> Card {
+    Card::OneOrMore
+}
+pub fn card_zero_or_more(_ctx: &Ctx) -> Card {
+    Card::ZeroOrMore
+}
+pub fn card_range(_ctx: &Ctx, number: Number, max: Max) -> Card {
+    Card::Range(Range { number, max })
+}
+#[derive(Debug, Clone)]
+pub enum Max {
+    Number(Number),
+    Star,
+}
+pub fn max_number(_ctx: &Ctx, number: Number) -> Max {
+    Max::Number(number)
+}
+pub fn max_star(_ctx: &Ctx) -> Max {
+    Max::Star
 }

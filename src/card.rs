@@ -10,6 +10,9 @@ pub enum Card {
 }
 
 impl Card {
+    pub fn range(min: usize, max: Max) -> Self {
+        Card::Range(min, max)
+    }
     pub fn contains(&self, count: usize) -> bool {
         match self {
             Card::ZeroOrOne => count <= 1,
@@ -49,7 +52,7 @@ impl Display for Card {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-enum Max {
+pub enum Max {
     Unbounded,
     Bounded(usize),
 }

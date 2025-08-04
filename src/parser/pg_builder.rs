@@ -2,14 +2,15 @@ use super::pgs_actions::CreateType;
 use rustemo::Parser;
 
 use crate::{
-    card::Card,
+    card::{Card as PGCard, Max as PGMax},
     formal_graph_type::FormalGraphType,
     key::Key,
     label_property_spec::LabelPropertySpec as PGLabelPropertySpec,
     parser::{
         pgs::PgsParser,
         pgs_actions::{
-            LabelPropertySpec, LabelSpec, Properties, Property, PropertySpec, SimpleType, TypeSpec,
+            BaseProperty, Card, LabelPropertySpec, LabelSpec, Max, Properties, Property,
+            PropertySpec, Range, SimpleType, TypeSpec,
         },
     },
     pgs_error::PgsError,
@@ -85,20 +86,65 @@ fn get_property_value(property_value: Properties) -> Result<PGPropertyValue, Pgs
             let right = get_property_value_spec(*one_of.right)?;
             Ok(PGPropertyValue::one_of(left, right))
         }
-        PropertySpec::Property(property) => get_property(property),
+        PropertySpec::BaseProperty(property) => get_base_property(property),
     }
 }
 
-fn get_property(property: Property) -> Result<PGPropertyValue, PgsError> {
-    let key = property.key;
-    let type_spec = get_type_spec(property.type_spec)?;
-    Ok(PGPropertyValue::property(Key::new(key.as_str()), type_spec))
+fn get_base_property(base_property: BaseProperty) -> Result<PGPropertyValue, PgsError> {
+    let (key, type_spec) = get_property(base_property.property)?;
+    if let Some(_) = base_property.optionalopt {
+        Ok(PGPropertyValue::optional_property(key, type_spec))
+    } else {
+        Ok(PGPropertyValue::property(key, type_spec))
+    }
 }
 
-fn get_type_spec(type_spec: TypeSpec) -> Result<PGTypeSpec, PgsError> {
+fn get_property(property: Property) -> Result<(Key, PGTypeSpec), PgsError> {
+    let key = property.key;
+    let card = if let Some(card) = property.card_opt {
+        get_card(card)?
+    } else {
+        PGCard::One
+    };
+    let type_spec = get_type_spec(property.type_spec, card)?;
+    Ok((Key::new(key.as_str()), type_spec))
+}
+
+fn get_card(card: Card) -> Result<PGCard, PgsError> {
+    match card {
+        Card::ZeroOrMore => Ok(PGCard::ZeroOrMore),
+        Card::OneOrMore => Ok(PGCard::OneOrMore),
+        Card::Range(range) => get_range(range),
+        Card::Optional => Ok(PGCard::ZeroOrOne),
+    }
+}
+
+fn get_range(range: Range) -> Result<PGCard, PgsError> {
+    let min = get_number(range.number)?;
+    let max = get_max(range.max)?;
+    Ok(PGCard::range(min, max))
+}
+
+fn get_max(max: Max) -> Result<PGMax, PgsError> {
+    match max {
+        Max::Number(n) => {
+            let n = get_number(n)?;
+            Ok(PGMax::Bounded(n))
+        }
+        Max::Star => Ok(PGMax::Unbounded),
+    }
+}
+
+fn get_number(number: String) -> Result<usize, PgsError> {
+    number
+        .parse::<usize>()
+        .map_err(|_| PgsError::InvalidNumber(number))
+}
+
+fn get_type_spec(type_spec: TypeSpec, card: PGCard) -> Result<PGTypeSpec, PgsError> {
     match type_spec {
-        super::pgs_actions::SimpleType::STRING_NAME => Ok(PGTypeSpec::string(Card::One)),
-        super::pgs_actions::SimpleType::INTEGER_NAME => Ok(PGTypeSpec::integer(Card::One)),
-        super::pgs_actions::SimpleType::DATE_NAME => Ok(PGTypeSpec::date(Card::One)),
+        super::pgs_actions::SimpleType::STRING_NAME => Ok(PGTypeSpec::string(card)),
+        super::pgs_actions::SimpleType::INTEGER_NAME => Ok(PGTypeSpec::integer(card)),
+        super::pgs_actions::SimpleType::DATE_NAME => Ok(PGTypeSpec::date(card)),
     }
 }

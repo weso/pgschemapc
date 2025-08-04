@@ -22,4 +22,19 @@ pub enum Command {
         #[arg(short, long, help = "Path to the schema file")]
         schema: String,
     },
+    #[command(name = "pg", about = "Process and validate property graphs")]
+    Pg {
+        #[arg(short, long, help = "Path to the property graph file")]
+        graph: String,
+    },
+    #[command(
+        name = "validate",
+        about = "Validate a property graph with a property graph schema"
+    )]
+    Validate {
+        #[arg(short, long, help = "Path to the property graph file")]
+        graph: String,
+        #[arg(short, long, help = "Path to the property graph schema file")]
+        schema: String,
+    },
 }
