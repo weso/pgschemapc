@@ -1,5 +1,6 @@
 mod boolean_expr;
 mod card;
+mod cli;
 mod edge;
 mod evidence;
 mod formal_base_type;
@@ -27,11 +28,17 @@ use crate::{
     value::Value,
     value_type::ValueType,
 };
+use anyhow::*;
+use clap::Parser;
+use cli::{Cli, Command};
+use pgschemapc::parser::pgs::PgsParser;
+use rustemo::Parser as RustEmoParser;
 use std::collections::HashSet;
+use std::result::Result::Ok;
 
 // src/main.rs
-fn main() {
-    let mut alice_content = record::Record::new();
+fn main() -> Result<()> {
+    /*let mut alice_content = record::Record::new();
     alice_content.insert(Key::new("name"), Value::str("Alice"));
     alice_content.insert(Key::new("age"), Value::int(42));
     let alice = Node::new(1)
@@ -75,5 +82,41 @@ fn main() {
     println!(
         "Conforms Bob to PersonType: {:?}",
         graph.conforms_node(&"PersonType".to_string(), &bob)
-    );
+    );*/
+
+    // Load environment variables from `.env`:
+    clientele::dotenv().ok();
+
+    // Expand wildcards and @argfiles:
+    let args = clientele::args_os()?;
+
+    // Parse command-line options:
+    let cli = Cli::parse_from(args);
+
+    match &cli.command {
+        Some(Command::Pgs { schema }) => run_pgs(schema),
+        None => {
+            bail!("Command not specified, type `--help` to see list of commands")
+        }
+    }
+}
+
+fn run_pgs(schema: &str) -> Result<()> {
+    // Load the schema file:
+    let schema_content = std::fs::read_to_string(schema)
+        .with_context(|| format!("Failed to read schema file: {}", schema))?;
+
+    // Parse the schema:
+    match PgsParser::new().parse(schema_content.as_str()) {
+        Ok(graph_type) => {
+            // Successfully parsed the schema, now we can work with `graph_type`.
+            println!("Parsed graph type: {:?}", graph_type);
+            // Print the parsed graph type:
+            println!("{:?}", graph_type);
+            Ok(())
+        }
+        Err(e) => {
+            bail!("Failed to parse schema: {}", e);
+        }
+    }
 }

@@ -10,6 +10,9 @@ keywords = ["pgschema", "property graphs", "property constraints"]
 categories = ["command-line-utilities", "property-graphs", "pg-schema"]
 
 [dependencies]
+anyhow = "1.0.98"
+clap = "4.5.42"
+clientele = "0.3.8"
 either = "1.15.0"
 rustemo = "0.7.1"
 thiserror = "2.0.12"

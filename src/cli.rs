@@ -1,0 +1,25 @@
+use clap::{Parser, Subcommand, command};
+
+#[derive(Parser, Debug)]
+#[command(author, version, about)]
+// #[command(name = "pgspc")]
+// #[command(author = "Jose Emilio Labra Gayo <labra@uniovi.es>")]
+// #[command(version = "0.1")]
+#[command(
+    arg_required_else_help = true,
+    long_about = "\
+A simple prototype tool to process and validate PG-Schemas with property constraints"
+)]
+pub struct Cli {
+    #[command(subcommand)]
+    pub command: Option<Command>,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum Command {
+    #[command(name = "pgs", about = "Process and validate property graph schemas")]
+    Pgs {
+        #[arg(short, long, help = "Path to the schema file")]
+        schema: String,
+    },
+}

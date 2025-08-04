@@ -1,9 +1,88 @@
-pgs:
-    create_type * ;
+Pgs:
+    CreateType SEMICOLON ;
 
-create_type: 
-    CREATE ;
-    
+CreateType: 
+    CreateNodeType | CreateEdgeType | CreateGraphType ;
+
+CreateNodeType:
+    CREATE NODE TYPE NodeType ;
+
+CreateEdgeType:
+    CREATE EDGE TYPE EdgeType ;
+
+CreateGraphType:
+    CREATE GRAPH TYPE GraphType ;
+
+NodeType:
+    "(" TypeName LabelPropertySpec ")" ;
+
+EdgeType:
+    EndpointType "-[" TypeName LabelPropertySpec "]->" EndpointType ;
+
+GraphType:
+    TypeName "{" "}" ;
+
+TypeName:
+    IDENTIFIER ;  
+
+EndpointType:
+    "(" LabelPropertySpec ")" ;
+
+LabelPropertySpec:
+    ":" IDENTIFIER ;
+
+/*endpoint_type:
+    "(" label_property_spec ")" ;
+
+label_property_spec:
+     ":" label_spec "OPEN" ? property_spec ?
+
+label_spec:
+    type_name
+
+property_spec:
+    "{" "}"*/
+
 terminals
 
-CREATE: "CREATE" ;
+IDENTIFIER:
+    /\w+/ ;
+
+SEMICOLON:
+    ";" ;
+
+CREATE:
+    "CREATE" ;
+
+NODE:
+    "NODE" ;
+
+EDGE:
+    "EDGE" ;
+
+GRAPH:
+    "GRAPH" ;
+
+TYPE:
+    "TYPE" ;
+
+OPEN_PAREN:
+    "(" ;
+
+CLOSE_PAREN:
+    ")" ;
+
+OPEN_ARROW:
+    "-[" ;
+
+CLOSE_ARROW:
+    "]->" ;
+
+OPEN_CURLY:
+    "{" ;
+
+CLOSE_CURLY:
+    "}" ;
+
+COLON:
+    ":" ;
