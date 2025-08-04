@@ -1,0 +1,120 @@
+Pg:
+    Nodes ;
+
+Nodes: left=Nodes "," right=Nodes {EachOf, 1, left}
+     | Node {SingleNode} 
+     ;
+
+Node:
+    "(" Id LabelPropertySpec ")" ;
+
+Id:
+    IDENTIFIER ;  
+
+LabelPropertySpec:
+    LabelSpec? PropertySpec? ;
+
+LabelSpec:
+    ":" IDENTIFIER ;
+
+PropertySpec:
+    OPEN_CURLY Properties CLOSE_CURLY ;
+
+Properties:
+      left=Properties "," right=Properties {EachOfProperties, 1, left} 
+    | Property {BaseProperty}
+    ;
+
+Property:
+    key ":" Values  ;
+
+key:
+    IDENTIFIER ;
+
+Values: left=Values "," right=Values {EachOfValues, 2, left}
+      | SingleValue
+      ;
+
+SingleValue:    
+      '\"' UNQUOTED_STRING '\"' {StringValue}
+    | NUMBER {NumberValue}
+    ;
+
+terminals
+
+UNQUOTED_STRING: /"((\\")|[^"])*"/ ;
+
+IDENTIFIER:
+    /\w+/ ;
+
+SEMICOLON:
+    ";" ;
+
+CREATE:
+    "CREATE" ;
+
+NODE:
+    "NODE" ;
+
+EDGE:
+    "EDGE" ;
+
+GRAPH:
+    "GRAPH" ;
+
+TYPE:
+    "TYPE" ;
+
+OPEN_PAREN:
+    "(" ;
+
+CLOSE_PAREN:
+    ")" ;
+
+OPEN_ARROW:
+    "-[" ;
+
+CLOSE_ARROW:
+    "]->" ;
+
+OPEN_CURLY:
+    "{" ;
+
+CLOSE_CURLY:
+    "}" ;
+
+COLON:
+    ":" ;
+
+COMMA:
+    "," ;
+
+BAR:
+    "|" ;
+
+PLUS:
+    "+" ;
+
+STAR:
+    "*" ;
+
+QUESTION:
+    "?" ;
+
+INTEGER_NAME:
+    "INTEGER" ;
+
+STRING_NAME:
+    "STRING" ;
+
+DATE_NAME:
+    "DATE" ;
+
+NUMBER:
+    /\d+/ ;
+
+OPTIONAL:
+    "OPTIONAL" ;
+
+QUOTE:
+    '\"' ;

@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use thiserror::Error;
 
 use crate::{card::Card, key::Key, type_name::TypeName, value::Value};
@@ -30,6 +28,9 @@ pub enum PgsError {
     #[error("Extra keys in closed record type: {record_type}, keys: {keys:?}")]
     ExtraKeysNotOpen { keys: String, record_type: String },
 
-    #[error("Parser error: {error}")]
+    #[error("Parser error parsing property graph schema: {error}")]
     ParserError { error: String },
+
+    #[error("Parser error parsing property graph: {error}")]
+    PGParserError { error: String },
 }

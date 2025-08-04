@@ -9,6 +9,7 @@ pub mod label_property_spec;
 pub mod node;
 pub mod node_id;
 pub mod parser;
+pub mod pg;
 pub mod pgs_error;
 pub mod property_value_spec;
 pub mod record;
