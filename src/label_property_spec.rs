@@ -1,16 +1,10 @@
-use std::{
-    collections::{HashMap, HashSet},
-    fmt::Display,
-};
-
-use thiserror::Error;
+use std::fmt::Display;
 
 use crate::{
     formal_base_type::FormalBaseType,
     formal_graph_type::FormalGraphType,
     pgs_error::PgsError,
-    property_value_spec::{PropertyValue, PropertyValueSpec},
-    record_type::RecordType,
+    property_value_spec::PropertyValueSpec,
     type_name::{Name, TypeName},
 };
 
@@ -128,7 +122,13 @@ impl Display for LabelPropertySpec {
 
 #[cfg(test)]
 mod tests {
-    use crate::{card::Card, key::Key, property_value_spec::TypeSpec, value_type::ValueType};
+    use crate::{
+        card::Card,
+        key::Key,
+        property_value_spec::{PropertyValue, TypeSpec},
+        record_type::RecordType,
+        value_type::ValueType,
+    };
 
     use super::*;
 

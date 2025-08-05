@@ -1,5 +1,5 @@
 Pgs:
-    CreateType SEMICOLON ;
+    CreateType+[SEMICOLON] ;
 
 CreateType: 
     CreateNodeType | CreateEdgeType | CreateGraphType ;
@@ -32,7 +32,28 @@ LabelPropertySpec:
     LabelSpec? PropertySpec? ;
 
 LabelSpec:
-    ":" IDENTIFIER ;
+    ":" Labels ;
+
+Labels: 
+    SingleLabel MoreLabels? 
+    ;
+
+MoreLabels: 
+    AMPERSAND SingleLabel MoreLabels? {AndLabels}
+  | BAR SingleLabel MoreLabels? {OrLabels}
+  ; 
+
+SingleLabel:
+    IDENTIFIER {SingleLabel} 
+   | "@" IDENTIFIER {TypeName} ;
+/*
+Labels: 
+  left=Labels "&" right=Labels {EachOfLabel, 1, Left}
+//  | left=Labels "|" right=Labels {OneOfLabel, 2, Left}
+//  | "(" Labels ")" {ParenLabel}
+  | IDENTIFIER {LabelName}
+//  | "@" IDENTIFIER {TypeName}
+  ; */
 
 PropertySpec:
     OPEN_CURLY Properties CLOSE_CURLY ;
@@ -81,7 +102,7 @@ property_spec:
 terminals
 
 IDENTIFIER:
-    /\w+/ ;
+    /[a-zA-Z_][0-9a-zA-Z_]*/ ;
 
 SEMICOLON:
     ";" ;
@@ -151,3 +172,9 @@ Number:
 
 OPTIONAL:
     "OPTIONAL" ;
+
+AMPERSAND:
+    "&" ;
+
+AT:
+    "@" ;

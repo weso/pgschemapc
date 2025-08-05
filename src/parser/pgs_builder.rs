@@ -9,8 +9,8 @@ use crate::{
     parser::{
         pgs::PgsParser,
         pgs_actions::{
-            BaseProperty, Card, LabelPropertySpec, LabelSpec, Max, Properties, Property,
-            PropertySpec, Range, SimpleType, TypeSpec,
+            BaseProperty, Card, LabelPropertySpec, LabelSpec, Labels, Max, MoreLabels, Properties,
+            Property, PropertySpec, Range, SingleLabel, TypeSpec,
         },
     },
     pgs_error::PgsError,
@@ -27,30 +27,40 @@ impl PgsBuilder {
         PgsBuilder {}
     }
     pub fn parse_pgs(&self, input: &str) -> Result<FormalGraphType, PgsError> {
-        let mut result = FormalGraphType::new();
         let pgs_content = PgsParser::new()
             .parse(input)
             .map_err(|e| PgsError::ParserError {
                 error: e.to_string(),
             })?;
-        match pgs_content {
+        let mut schema = FormalGraphType::new();
+        get_create_types(pgs_content, &mut schema)?;
+        Ok(schema)
+    }
+}
+
+fn get_create_types(
+    create_types: Vec<CreateType>,
+    schema: &mut FormalGraphType,
+) -> Result<(), PgsError> {
+    for create_type in create_types {
+        match create_type {
             CreateType::CreateNodeType(node_type) => {
                 let type_name = node_type.type_name;
                 let label_property_spec = get_label_property_spec(node_type.label_property_spec)?;
-                result.add(type_name.as_str(), label_property_spec);
+                schema.add(type_name.as_str(), label_property_spec);
             }
-            CreateType::CreateEdgeType(edge_type) => todo!(),
+            CreateType::CreateEdgeType(_edge_type) => todo!(),
             CreateType::CreateGraphType(_) => todo!(),
         }
-        Ok(result)
     }
+    Ok(())
 }
 
 fn get_label_property_spec(
     label_property_spec: LabelPropertySpec,
 ) -> Result<PGLabelPropertySpec, PgsError> {
     if let Some(label_spec) = label_property_spec.label_spec_opt {
-        let label_spec = get_label_spec(label_spec)?;
+        let label_spec = get_labels(label_spec)?;
         if let Some(property_spec) = label_property_spec.property_spec_opt {
             let property_value_spec = get_property_value_spec(property_spec)?;
             Ok(PGLabelPropertySpec::content(
@@ -65,8 +75,47 @@ fn get_label_property_spec(
     }
 }
 
-fn get_label_spec(label_spec: LabelSpec) -> Result<PGLabelPropertySpec, PgsError> {
-    Ok(PGLabelPropertySpec::Label(label_spec))
+fn get_labels(labels: Labels) -> Result<PGLabelPropertySpec, PgsError> {
+    let mut label_spec = get_single_label(labels.single_label)?;
+    if let Some(more_labels) = labels.more_labels_opt {
+        get_more_labels(more_labels, &mut label_spec)?;
+    }
+    Ok(label_spec)
+}
+
+fn get_single_label(single_label: SingleLabel) -> Result<PGLabelPropertySpec, PgsError> {
+    match single_label {
+        SingleLabel::SingleLabel(identifier) => Ok(PGLabelPropertySpec::label(identifier)),
+        SingleLabel::TypeName(type_name) => Ok(PGLabelPropertySpec::ref_(type_name)),
+    }
+}
+
+fn get_more_labels(
+    more_labels: MoreLabels,
+    label_spec: &mut PGLabelPropertySpec,
+) -> Result<(), PgsError> {
+    match more_labels {
+        MoreLabels::AndLabels(and_labels) => {
+            let label_spec2 = get_single_label(and_labels.single_label)?;
+            *label_spec = PGLabelPropertySpec::and(label_spec.clone(), label_spec2);
+            if let Some(more_labels) = *and_labels.more_labels_opt {
+                get_more_labels(more_labels, label_spec)?;
+                Ok(())
+            } else {
+                Ok(())
+            }
+        }
+        MoreLabels::OrLabels(or_labels) => {
+            let label_spec2 = get_single_label(or_labels.single_label)?;
+            *label_spec = PGLabelPropertySpec::or(label_spec.clone(), label_spec2);
+            if let Some(more_labels) = *or_labels.more_labels_opt {
+                get_more_labels(more_labels, label_spec)?;
+                Ok(())
+            } else {
+                Ok(())
+            }
+        }
+    }
 }
 
 fn get_property_value_spec(property_value_spec: Properties) -> Result<PGPropertyValue, PgsError> {

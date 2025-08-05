@@ -14,9 +14,21 @@ pub type Number = String;
 pub fn number(_ctx: &Ctx, token: Token) -> Number {
     token.value.into()
 }
-pub type Pgs = CreateType;
-pub fn pgs_create_type(_ctx: &Ctx, create_type: CreateType) -> Pgs {
-    create_type
+pub type Pgs = CreateType1;
+pub fn pgs_create_type1(_ctx: &Ctx, create_type1: CreateType1) -> Pgs {
+    create_type1
+}
+pub type CreateType1 = Vec<CreateType>;
+pub fn create_type1_c1(
+    _ctx: &Ctx,
+    mut create_type1: CreateType1,
+    create_type: CreateType,
+) -> CreateType1 {
+    create_type1.push(create_type);
+    create_type1
+}
+pub fn create_type1_create_type(_ctx: &Ctx, create_type: CreateType) -> CreateType1 {
+    vec![create_type]
 }
 #[derive(Debug, Clone)]
 pub enum CreateType {
@@ -140,9 +152,80 @@ pub fn property_spec_opt_property_spec(
 pub fn property_spec_opt_empty(_ctx: &Ctx) -> PropertySpecOpt {
     None
 }
-pub type LabelSpec = IDENTIFIER;
-pub fn label_spec_identifier(_ctx: &Ctx, identifier: IDENTIFIER) -> LabelSpec {
-    identifier
+pub type LabelSpec = Labels;
+pub fn label_spec_labels(_ctx: &Ctx, labels: Labels) -> LabelSpec {
+    labels
+}
+#[derive(Debug, Clone)]
+pub struct Labels {
+    pub single_label: SingleLabel,
+    pub more_labels_opt: MoreLabelsOpt,
+}
+pub fn labels_c1(
+    _ctx: &Ctx,
+    single_label: SingleLabel,
+    more_labels_opt: MoreLabelsOpt,
+) -> Labels {
+    Labels {
+        single_label,
+        more_labels_opt,
+    }
+}
+pub type MoreLabelsOpt = Option<MoreLabels>;
+pub fn more_labels_opt_more_labels(
+    _ctx: &Ctx,
+    more_labels: MoreLabels,
+) -> MoreLabelsOpt {
+    Some(more_labels)
+}
+pub fn more_labels_opt_empty(_ctx: &Ctx) -> MoreLabelsOpt {
+    None
+}
+#[derive(Debug, Clone)]
+pub struct AndLabels {
+    pub single_label: SingleLabel,
+    pub more_labels_opt: Box<MoreLabelsOpt>,
+}
+#[derive(Debug, Clone)]
+pub struct OrLabels {
+    pub single_label: SingleLabel,
+    pub more_labels_opt: Box<MoreLabelsOpt>,
+}
+#[derive(Debug, Clone)]
+pub enum MoreLabels {
+    AndLabels(AndLabels),
+    OrLabels(OrLabels),
+}
+pub fn more_labels_and_labels(
+    _ctx: &Ctx,
+    single_label: SingleLabel,
+    more_labels_opt: MoreLabelsOpt,
+) -> MoreLabels {
+    MoreLabels::AndLabels(AndLabels {
+        single_label,
+        more_labels_opt: Box::new(more_labels_opt),
+    })
+}
+pub fn more_labels_or_labels(
+    _ctx: &Ctx,
+    single_label: SingleLabel,
+    more_labels_opt: MoreLabelsOpt,
+) -> MoreLabels {
+    MoreLabels::OrLabels(OrLabels {
+        single_label,
+        more_labels_opt: Box::new(more_labels_opt),
+    })
+}
+#[derive(Debug, Clone)]
+pub enum SingleLabel {
+    SingleLabel(IDENTIFIER),
+    TypeName(IDENTIFIER),
+}
+pub fn single_label_single_label(_ctx: &Ctx, identifier: IDENTIFIER) -> SingleLabel {
+    SingleLabel::SingleLabel(identifier)
+}
+pub fn single_label_type_name(_ctx: &Ctx, identifier: IDENTIFIER) -> SingleLabel {
+    SingleLabel::TypeName(identifier)
 }
 pub type PropertySpec = Properties;
 pub fn property_spec_properties(_ctx: &Ctx, properties: Properties) -> PropertySpec {

@@ -1,0 +1,4 @@
+CREATE NODE TYPE ( AdultStudentType {
+    name: STRING , 
+    age: INTEGER CHECK > 18
+}) 

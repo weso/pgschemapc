@@ -1,5 +1,5 @@
 CREATE NODE TYPE ( personType : Person {
     (name: STRING | firstName: STRING, lastName: STRING),
-    OPTIONAL age: INTEGER,
+    age: INTEGER,
     aliases: STRING *
-}) ;
+}) 
