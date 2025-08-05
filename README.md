@@ -1,4 +1,4 @@
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.16738599.svg)](https://doi.org/10.5281/zenodo.16738599)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.16744091.svg)](https://doi.org/10.5281/zenodo.16744091)
 
 # PG-Schema_PC
 
