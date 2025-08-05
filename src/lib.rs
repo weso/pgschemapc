@@ -14,6 +14,7 @@ pub mod pgs_error;
 pub mod property_value_spec;
 pub mod record;
 pub mod record_type;
+pub mod type_map;
 pub mod type_name;
 pub mod value;
 pub mod value_type;

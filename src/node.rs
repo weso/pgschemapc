@@ -5,7 +5,7 @@ use crate::{node_id::NodeId, record::Record, type_name::LabelName};
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Node {
     pub id: NodeId,
-    pub label: HashSet<LabelName>,
+    pub labels: HashSet<LabelName>,
     pub properties: Record,
 }
 
@@ -13,13 +13,18 @@ impl Node {
     pub fn new(id: u32) -> Self {
         Node {
             id: NodeId::new(id),
-            label: HashSet::new(),
+            labels: HashSet::new(),
             properties: Record::new(),
         }
     }
 
     pub fn with_label(mut self, label: &str) -> Self {
-        self.label.insert(label.to_string());
+        self.labels.insert(label.to_string());
+        self
+    }
+
+    pub fn with_labels(mut self, labels: HashSet<LabelName>) -> Self {
+        self.labels = labels;
         self
     }
 
@@ -29,7 +34,7 @@ impl Node {
     }
 
     pub fn labels(&self) -> &HashSet<LabelName> {
-        &self.label
+        &self.labels
     }
 
     pub fn content(&self) -> &Record {
@@ -42,7 +47,7 @@ impl Display for Node {
         write!(
             f,
             "Node({} {:?} [{:?}]",
-            self.id, self.label, self.properties
+            self.id, self.labels, self.properties
         )
     }
 }

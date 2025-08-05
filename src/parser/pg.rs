@@ -18,16 +18,16 @@ use rustemo::debug::{log, logn};
 #[cfg(debug_assertions)]
 use rustemo::colored::*;
 pub type Input = str;
-const STATE_COUNT: usize = 34usize;
+const STATE_COUNT: usize = 42usize;
 const MAX_RECOGNIZERS: usize = 3usize;
 #[allow(dead_code)]
-const TERMINAL_COUNT: usize = 27usize;
+const TERMINAL_COUNT: usize = 30usize;
 #[allow(clippy::upper_case_acronyms)]
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum TokenKind {
     #[default]
     STOP,
-    UNQUOTED_STRING,
+    QUOTED_STRING,
     IDENTIFIER,
     SEMICOLON,
     CREATE,
@@ -53,6 +53,9 @@ pub enum TokenKind {
     NUMBER,
     OPTIONAL,
     QUOTE,
+    AMPERSAND,
+    OPENSQUAREBRACKET,
+    CLOSESQUAREBRACKET,
 }
 use TokenKind as TK;
 impl From<TokenKind> for usize {
@@ -64,8 +67,9 @@ impl From<TokenKind> for usize {
 #[derive(Clone, Copy, PartialEq)]
 pub enum ProdKind {
     PgP1,
-    NodesEachOf,
-    NodesSingleNode,
+    NodesP1,
+    Node1P1,
+    Node1P2,
     NodeP1,
     IdP1,
     LabelPropertySpecP1,
@@ -74,13 +78,19 @@ pub enum ProdKind {
     PropertySpecOptP1,
     PropertySpecOptP2,
     LabelSpecP1,
+    IDENTIFIER1P1,
+    IDENTIFIER1P2,
     PropertySpecP1,
-    PropertiesEachOfProperties,
-    PropertiesBaseProperty,
+    PropertiesP1,
+    Property1P1,
+    Property1P2,
     PropertyP1,
     keyP1,
-    ValuesEachOfValues,
-    ValuesP2,
+    ValuesP1,
+    ValuesListValue,
+    ListValuesP1,
+    SingleValue1P1,
+    SingleValue1P2,
     SingleValueStringValue,
     SingleValueNumberValue,
 }
@@ -89,8 +99,9 @@ impl std::fmt::Debug for ProdKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let name = match self {
             ProdKind::PgP1 => "Pg: Nodes",
-            ProdKind::NodesEachOf => "Nodes: Nodes COMMA Nodes",
-            ProdKind::NodesSingleNode => "Nodes: Node",
+            ProdKind::NodesP1 => "Nodes: Node1",
+            ProdKind::Node1P1 => "Node1: Node1 SEMICOLON Node",
+            ProdKind::Node1P2 => "Node1: Node",
             ProdKind::NodeP1 => "Node: OPEN_PAREN Id LabelPropertySpec CLOSE_PAREN",
             ProdKind::IdP1 => "Id: IDENTIFIER",
             ProdKind::LabelPropertySpecP1 => {
@@ -100,19 +111,23 @@ impl std::fmt::Debug for ProdKind {
             ProdKind::LabelSpecOptP2 => "LabelSpecOpt: ",
             ProdKind::PropertySpecOptP1 => "PropertySpecOpt: PropertySpec",
             ProdKind::PropertySpecOptP2 => "PropertySpecOpt: ",
-            ProdKind::LabelSpecP1 => "LabelSpec: COLON IDENTIFIER",
+            ProdKind::LabelSpecP1 => "LabelSpec: COLON IDENTIFIER1",
+            ProdKind::IDENTIFIER1P1 => "IDENTIFIER1: IDENTIFIER1 AMPERSAND IDENTIFIER",
+            ProdKind::IDENTIFIER1P2 => "IDENTIFIER1: IDENTIFIER",
             ProdKind::PropertySpecP1 => "PropertySpec: OPEN_CURLY Properties CLOSE_CURLY",
-            ProdKind::PropertiesEachOfProperties => {
-                "Properties: Properties COMMA Properties"
-            }
-            ProdKind::PropertiesBaseProperty => "Properties: Property",
+            ProdKind::PropertiesP1 => "Properties: Property1",
+            ProdKind::Property1P1 => "Property1: Property1 COMMA Property",
+            ProdKind::Property1P2 => "Property1: Property",
             ProdKind::PropertyP1 => "Property: key COLON Values",
             ProdKind::keyP1 => "key: IDENTIFIER",
-            ProdKind::ValuesEachOfValues => "Values: Values COMMA Values",
-            ProdKind::ValuesP2 => "Values: SingleValue",
-            ProdKind::SingleValueStringValue => {
-                "SingleValue: QUOTE UNQUOTED_STRING QUOTE"
+            ProdKind::ValuesP1 => "Values: SingleValue",
+            ProdKind::ValuesListValue => {
+                "Values: OPENSQUAREBRACKET ListValues CLOSESQUAREBRACKET"
             }
+            ProdKind::ListValuesP1 => "ListValues: SingleValue1",
+            ProdKind::SingleValue1P1 => "SingleValue1: SingleValue1 COMMA SingleValue",
+            ProdKind::SingleValue1P2 => "SingleValue1: SingleValue",
+            ProdKind::SingleValueStringValue => "SingleValue: QUOTED_STRING",
             ProdKind::SingleValueNumberValue => "SingleValue: NUMBER",
         };
         write!(f, "{name}")
@@ -126,25 +141,31 @@ pub enum NonTermKind {
     AUG,
     Pg,
     Nodes,
+    Node1,
     Node,
     Id,
     LabelPropertySpec,
     LabelSpecOpt,
     PropertySpecOpt,
     LabelSpec,
+    IDENTIFIER1,
     PropertySpec,
     Properties,
+    Property1,
     Property,
     key,
     Values,
+    ListValues,
+    SingleValue1,
     SingleValue,
 }
 impl From<ProdKind> for NonTermKind {
     fn from(prod: ProdKind) -> Self {
         match prod {
             ProdKind::PgP1 => NonTermKind::Pg,
-            ProdKind::NodesEachOf => NonTermKind::Nodes,
-            ProdKind::NodesSingleNode => NonTermKind::Nodes,
+            ProdKind::NodesP1 => NonTermKind::Nodes,
+            ProdKind::Node1P1 => NonTermKind::Node1,
+            ProdKind::Node1P2 => NonTermKind::Node1,
             ProdKind::NodeP1 => NonTermKind::Node,
             ProdKind::IdP1 => NonTermKind::Id,
             ProdKind::LabelPropertySpecP1 => NonTermKind::LabelPropertySpec,
@@ -153,13 +174,19 @@ impl From<ProdKind> for NonTermKind {
             ProdKind::PropertySpecOptP1 => NonTermKind::PropertySpecOpt,
             ProdKind::PropertySpecOptP2 => NonTermKind::PropertySpecOpt,
             ProdKind::LabelSpecP1 => NonTermKind::LabelSpec,
+            ProdKind::IDENTIFIER1P1 => NonTermKind::IDENTIFIER1,
+            ProdKind::IDENTIFIER1P2 => NonTermKind::IDENTIFIER1,
             ProdKind::PropertySpecP1 => NonTermKind::PropertySpec,
-            ProdKind::PropertiesEachOfProperties => NonTermKind::Properties,
-            ProdKind::PropertiesBaseProperty => NonTermKind::Properties,
+            ProdKind::PropertiesP1 => NonTermKind::Properties,
+            ProdKind::Property1P1 => NonTermKind::Property1,
+            ProdKind::Property1P2 => NonTermKind::Property1,
             ProdKind::PropertyP1 => NonTermKind::Property,
             ProdKind::keyP1 => NonTermKind::key,
-            ProdKind::ValuesEachOfValues => NonTermKind::Values,
-            ProdKind::ValuesP2 => NonTermKind::Values,
+            ProdKind::ValuesP1 => NonTermKind::Values,
+            ProdKind::ValuesListValue => NonTermKind::Values,
+            ProdKind::ListValuesP1 => NonTermKind::ListValues,
+            ProdKind::SingleValue1P1 => NonTermKind::SingleValue1,
+            ProdKind::SingleValue1P2 => NonTermKind::SingleValue1,
             ProdKind::SingleValueStringValue => NonTermKind::SingleValue,
             ProdKind::SingleValueNumberValue => NonTermKind::SingleValue,
         }
@@ -173,36 +200,44 @@ pub enum State {
     OPEN_PARENS1,
     PgS2,
     NodesS3,
-    NodeS4,
-    IDENTIFIERS5,
-    IdS6,
-    COMMAS7,
-    COLONS8,
-    LabelPropertySpecS9,
-    LabelSpecOptS10,
-    LabelSpecS11,
-    NodesS12,
-    IDENTIFIERS13,
-    CLOSE_PARENS14,
-    OPEN_CURLYS15,
-    PropertySpecOptS16,
-    PropertySpecS17,
-    IDENTIFIERS18,
-    PropertiesS19,
-    PropertyS20,
-    keyS21,
-    CLOSE_CURLYS22,
-    COMMAS23,
-    COLONS24,
-    PropertiesS25,
-    NUMBERS26,
-    QUOTES27,
-    ValuesS28,
-    SingleValueS29,
-    UNQUOTED_STRINGS30,
-    COMMAS31,
-    QUOTES32,
-    ValuesS33,
+    Node1S4,
+    NodeS5,
+    IDENTIFIERS6,
+    IdS7,
+    SEMICOLONS8,
+    COLONS9,
+    LabelPropertySpecS10,
+    LabelSpecOptS11,
+    LabelSpecS12,
+    NodeS13,
+    IDENTIFIERS14,
+    IDENTIFIER1S15,
+    CLOSE_PARENS16,
+    OPEN_CURLYS17,
+    PropertySpecOptS18,
+    PropertySpecS19,
+    AMPERSANDS20,
+    IDENTIFIERS21,
+    PropertiesS22,
+    Property1S23,
+    PropertyS24,
+    keyS25,
+    IDENTIFIERS26,
+    CLOSE_CURLYS27,
+    COMMAS28,
+    COLONS29,
+    PropertyS30,
+    QUOTED_STRINGS31,
+    NUMBERS32,
+    OPENSQUAREBRACKETS33,
+    ValuesS34,
+    SingleValueS35,
+    ListValuesS36,
+    SingleValue1S37,
+    SingleValueS38,
+    CLOSESQUAREBRACKETS39,
+    COMMAS40,
+    SingleValueS41,
 }
 impl StateT for State {
     fn default_layout() -> Option<Self> {
@@ -221,36 +256,44 @@ impl std::fmt::Debug for State {
             State::OPEN_PARENS1 => "1:OPEN_PAREN",
             State::PgS2 => "2:Pg",
             State::NodesS3 => "3:Nodes",
-            State::NodeS4 => "4:Node",
-            State::IDENTIFIERS5 => "5:IDENTIFIER",
-            State::IdS6 => "6:Id",
-            State::COMMAS7 => "7:COMMA",
-            State::COLONS8 => "8:COLON",
-            State::LabelPropertySpecS9 => "9:LabelPropertySpec",
-            State::LabelSpecOptS10 => "10:LabelSpecOpt",
-            State::LabelSpecS11 => "11:LabelSpec",
-            State::NodesS12 => "12:Nodes",
-            State::IDENTIFIERS13 => "13:IDENTIFIER",
-            State::CLOSE_PARENS14 => "14:CLOSE_PAREN",
-            State::OPEN_CURLYS15 => "15:OPEN_CURLY",
-            State::PropertySpecOptS16 => "16:PropertySpecOpt",
-            State::PropertySpecS17 => "17:PropertySpec",
-            State::IDENTIFIERS18 => "18:IDENTIFIER",
-            State::PropertiesS19 => "19:Properties",
-            State::PropertyS20 => "20:Property",
-            State::keyS21 => "21:key",
-            State::CLOSE_CURLYS22 => "22:CLOSE_CURLY",
-            State::COMMAS23 => "23:COMMA",
-            State::COLONS24 => "24:COLON",
-            State::PropertiesS25 => "25:Properties",
-            State::NUMBERS26 => "26:NUMBER",
-            State::QUOTES27 => "27:QUOTE",
-            State::ValuesS28 => "28:Values",
-            State::SingleValueS29 => "29:SingleValue",
-            State::UNQUOTED_STRINGS30 => "30:UNQUOTED_STRING",
-            State::COMMAS31 => "31:COMMA",
-            State::QUOTES32 => "32:QUOTE",
-            State::ValuesS33 => "33:Values",
+            State::Node1S4 => "4:Node1",
+            State::NodeS5 => "5:Node",
+            State::IDENTIFIERS6 => "6:IDENTIFIER",
+            State::IdS7 => "7:Id",
+            State::SEMICOLONS8 => "8:SEMICOLON",
+            State::COLONS9 => "9:COLON",
+            State::LabelPropertySpecS10 => "10:LabelPropertySpec",
+            State::LabelSpecOptS11 => "11:LabelSpecOpt",
+            State::LabelSpecS12 => "12:LabelSpec",
+            State::NodeS13 => "13:Node",
+            State::IDENTIFIERS14 => "14:IDENTIFIER",
+            State::IDENTIFIER1S15 => "15:IDENTIFIER1",
+            State::CLOSE_PARENS16 => "16:CLOSE_PAREN",
+            State::OPEN_CURLYS17 => "17:OPEN_CURLY",
+            State::PropertySpecOptS18 => "18:PropertySpecOpt",
+            State::PropertySpecS19 => "19:PropertySpec",
+            State::AMPERSANDS20 => "20:AMPERSAND",
+            State::IDENTIFIERS21 => "21:IDENTIFIER",
+            State::PropertiesS22 => "22:Properties",
+            State::Property1S23 => "23:Property1",
+            State::PropertyS24 => "24:Property",
+            State::keyS25 => "25:key",
+            State::IDENTIFIERS26 => "26:IDENTIFIER",
+            State::CLOSE_CURLYS27 => "27:CLOSE_CURLY",
+            State::COMMAS28 => "28:COMMA",
+            State::COLONS29 => "29:COLON",
+            State::PropertyS30 => "30:Property",
+            State::QUOTED_STRINGS31 => "31:QUOTED_STRING",
+            State::NUMBERS32 => "32:NUMBER",
+            State::OPENSQUAREBRACKETS33 => "33:OPENSQUAREBRACKET",
+            State::ValuesS34 => "34:Values",
+            State::SingleValueS35 => "35:SingleValue",
+            State::ListValuesS36 => "36:ListValues",
+            State::SingleValue1S37 => "37:SingleValue1",
+            State::SingleValueS38 => "38:SingleValue",
+            State::CLOSESQUAREBRACKETS39 => "39:CLOSESQUAREBRACKET",
+            State::COMMAS40 => "40:COMMA",
+            State::SingleValueS41 => "41:SingleValue",
         };
         write!(f, "{name}")
     }
@@ -263,8 +306,9 @@ pub enum Symbol {
 #[allow(clippy::upper_case_acronyms)]
 #[derive(Debug)]
 pub enum Terminal {
-    UNQUOTED_STRING(pg_actions::UNQUOTED_STRING),
+    QUOTED_STRING(pg_actions::QUOTED_STRING),
     IDENTIFIER(pg_actions::IDENTIFIER),
+    SEMICOLON,
     OPEN_PAREN,
     CLOSE_PAREN,
     OPEN_CURLY,
@@ -272,23 +316,30 @@ pub enum Terminal {
     COLON,
     COMMA,
     NUMBER(pg_actions::NUMBER),
-    QUOTE,
+    AMPERSAND,
+    OPENSQUAREBRACKET,
+    CLOSESQUAREBRACKET,
 }
 #[derive(Debug)]
 pub enum NonTerminal {
     Pg(pg_actions::Pg),
     Nodes(pg_actions::Nodes),
+    Node1(pg_actions::Node1),
     Node(pg_actions::Node),
     Id(pg_actions::Id),
     LabelPropertySpec(pg_actions::LabelPropertySpec),
     LabelSpecOpt(pg_actions::LabelSpecOpt),
     PropertySpecOpt(pg_actions::PropertySpecOpt),
     LabelSpec(pg_actions::LabelSpec),
+    IDENTIFIER1(pg_actions::IDENTIFIER1),
     PropertySpec(pg_actions::PropertySpec),
     Properties(pg_actions::Properties),
+    Property1(pg_actions::Property1),
     Property(pg_actions::Property),
     key(pg_actions::key),
     Values(pg_actions::Values),
+    ListValues(pg_actions::ListValues),
+    SingleValue1(pg_actions::SingleValue1),
     SingleValue(pg_actions::SingleValue),
 }
 type ActionFn = fn(token: TokenKind) -> Vec<Action<State, ProdKind>>;
@@ -305,7 +356,7 @@ fn action_aug_s0(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
 }
 fn action_open_paren_s1(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::IDENTIFIER => Vec::from(&[Shift(State::IDENTIFIERS5)]),
+        TK::IDENTIFIER => Vec::from(&[Shift(State::IDENTIFIERS6)]),
         _ => vec![],
     }
 }
@@ -318,18 +369,24 @@ fn action_pg_s2(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
 fn action_nodes_s3(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::STOP => Vec::from(&[Reduce(PK::PgP1, 1usize)]),
-        TK::COMMA => Vec::from(&[Shift(State::COMMAS7)]),
         _ => vec![],
     }
 }
-fn action_node_s4(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_node1_s4(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::STOP => Vec::from(&[Reduce(PK::NodesSingleNode, 1usize)]),
-        TK::COMMA => Vec::from(&[Reduce(PK::NodesSingleNode, 1usize)]),
+        TK::STOP => Vec::from(&[Reduce(PK::NodesP1, 1usize)]),
+        TK::SEMICOLON => Vec::from(&[Shift(State::SEMICOLONS8)]),
         _ => vec![],
     }
 }
-fn action_identifier_s5(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_node_s5(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::STOP => Vec::from(&[Reduce(PK::Node1P2, 1usize)]),
+        TK::SEMICOLON => Vec::from(&[Reduce(PK::Node1P2, 1usize)]),
+        _ => vec![],
+    }
+}
+fn action_identifier_s6(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::IdP1, 1usize)]),
         TK::OPEN_CURLY => Vec::from(&[Reduce(PK::IdP1, 1usize)]),
@@ -337,188 +394,246 @@ fn action_identifier_s5(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
         _ => vec![],
     }
 }
-fn action_id_s6(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_id_s7(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::LabelSpecOptP2, 0usize)]),
         TK::OPEN_CURLY => Vec::from(&[Reduce(PK::LabelSpecOptP2, 0usize)]),
-        TK::COLON => Vec::from(&[Shift(State::COLONS8)]),
+        TK::COLON => Vec::from(&[Shift(State::COLONS9)]),
         _ => vec![],
     }
 }
-fn action_comma_s7(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_semicolon_s8(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::OPEN_PAREN => Vec::from(&[Shift(State::OPEN_PARENS1)]),
         _ => vec![],
     }
 }
-fn action_colon_s8(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_colon_s9(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::IDENTIFIER => Vec::from(&[Shift(State::IDENTIFIERS13)]),
+        TK::IDENTIFIER => Vec::from(&[Shift(State::IDENTIFIERS14)]),
         _ => vec![],
     }
 }
-fn action_labelpropertyspec_s9(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_labelpropertyspec_s10(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::CLOSE_PAREN => Vec::from(&[Shift(State::CLOSE_PARENS14)]),
+        TK::CLOSE_PAREN => Vec::from(&[Shift(State::CLOSE_PARENS16)]),
         _ => vec![],
     }
 }
-fn action_labelspecopt_s10(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_labelspecopt_s11(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::PropertySpecOptP2, 0usize)]),
-        TK::OPEN_CURLY => Vec::from(&[Shift(State::OPEN_CURLYS15)]),
+        TK::OPEN_CURLY => Vec::from(&[Shift(State::OPEN_CURLYS17)]),
         _ => vec![],
     }
 }
-fn action_labelspec_s11(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_labelspec_s12(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::LabelSpecOptP1, 1usize)]),
         TK::OPEN_CURLY => Vec::from(&[Reduce(PK::LabelSpecOptP1, 1usize)]),
         _ => vec![],
     }
 }
-fn action_nodes_s12(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_node_s13(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::STOP => Vec::from(&[Reduce(PK::NodesEachOf, 3usize)]),
-        TK::COMMA => Vec::from(&[Reduce(PK::NodesEachOf, 3usize)]),
+        TK::STOP => Vec::from(&[Reduce(PK::Node1P1, 3usize)]),
+        TK::SEMICOLON => Vec::from(&[Reduce(PK::Node1P1, 3usize)]),
         _ => vec![],
     }
 }
-fn action_identifier_s13(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_identifier_s14(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::IDENTIFIER1P2, 1usize)]),
+        TK::OPEN_CURLY => Vec::from(&[Reduce(PK::IDENTIFIER1P2, 1usize)]),
+        TK::AMPERSAND => Vec::from(&[Reduce(PK::IDENTIFIER1P2, 1usize)]),
+        _ => vec![],
+    }
+}
+fn action_identifier1_s15(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::LabelSpecP1, 2usize)]),
         TK::OPEN_CURLY => Vec::from(&[Reduce(PK::LabelSpecP1, 2usize)]),
+        TK::AMPERSAND => Vec::from(&[Shift(State::AMPERSANDS20)]),
         _ => vec![],
     }
 }
-fn action_close_paren_s14(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_close_paren_s16(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::STOP => Vec::from(&[Reduce(PK::NodeP1, 4usize)]),
-        TK::COMMA => Vec::from(&[Reduce(PK::NodeP1, 4usize)]),
+        TK::SEMICOLON => Vec::from(&[Reduce(PK::NodeP1, 4usize)]),
         _ => vec![],
     }
 }
-fn action_open_curly_s15(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_open_curly_s17(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::IDENTIFIER => Vec::from(&[Shift(State::IDENTIFIERS18)]),
+        TK::IDENTIFIER => Vec::from(&[Shift(State::IDENTIFIERS21)]),
         _ => vec![],
     }
 }
-fn action_propertyspecopt_s16(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_propertyspecopt_s18(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::LabelPropertySpecP1, 2usize)]),
         _ => vec![],
     }
 }
-fn action_propertyspec_s17(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_propertyspec_s19(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::PropertySpecOptP1, 1usize)]),
         _ => vec![],
     }
 }
-fn action_identifier_s18(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_ampersand_s20(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::IDENTIFIER => Vec::from(&[Shift(State::IDENTIFIERS26)]),
+        _ => vec![],
+    }
+}
+fn action_identifier_s21(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::COLON => Vec::from(&[Reduce(PK::keyP1, 1usize)]),
         _ => vec![],
     }
 }
-fn action_properties_s19(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_properties_s22(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::CLOSE_CURLY => Vec::from(&[Shift(State::CLOSE_CURLYS22)]),
-        TK::COMMA => Vec::from(&[Shift(State::COMMAS23)]),
+        TK::CLOSE_CURLY => Vec::from(&[Shift(State::CLOSE_CURLYS27)]),
         _ => vec![],
     }
 }
-fn action_property_s20(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_property1_s23(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::PropertiesBaseProperty, 1usize)]),
-        TK::COMMA => Vec::from(&[Reduce(PK::PropertiesBaseProperty, 1usize)]),
+        TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::PropertiesP1, 1usize)]),
+        TK::COMMA => Vec::from(&[Shift(State::COMMAS28)]),
         _ => vec![],
     }
 }
-fn action_key_s21(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_property_s24(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::COLON => Vec::from(&[Shift(State::COLONS24)]),
+        TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::Property1P2, 1usize)]),
+        TK::COMMA => Vec::from(&[Reduce(PK::Property1P2, 1usize)]),
         _ => vec![],
     }
 }
-fn action_close_curly_s22(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_key_s25(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::COLON => Vec::from(&[Shift(State::COLONS29)]),
+        _ => vec![],
+    }
+}
+fn action_identifier_s26(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::IDENTIFIER1P1, 3usize)]),
+        TK::OPEN_CURLY => Vec::from(&[Reduce(PK::IDENTIFIER1P1, 3usize)]),
+        TK::AMPERSAND => Vec::from(&[Reduce(PK::IDENTIFIER1P1, 3usize)]),
+        _ => vec![],
+    }
+}
+fn action_close_curly_s27(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::PropertySpecP1, 3usize)]),
         _ => vec![],
     }
 }
-fn action_comma_s23(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_comma_s28(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::IDENTIFIER => Vec::from(&[Shift(State::IDENTIFIERS18)]),
+        TK::IDENTIFIER => Vec::from(&[Shift(State::IDENTIFIERS21)]),
         _ => vec![],
     }
 }
-fn action_colon_s24(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_colon_s29(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::NUMBER => Vec::from(&[Shift(State::NUMBERS26)]),
-        TK::QUOTE => Vec::from(&[Shift(State::QUOTES27)]),
+        TK::QUOTED_STRING => Vec::from(&[Shift(State::QUOTED_STRINGS31)]),
+        TK::NUMBER => Vec::from(&[Shift(State::NUMBERS32)]),
+        TK::OPENSQUAREBRACKET => Vec::from(&[Shift(State::OPENSQUAREBRACKETS33)]),
         _ => vec![],
     }
 }
-fn action_properties_s25(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_property_s30(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::PropertiesEachOfProperties, 3usize)]),
-        TK::COMMA => Vec::from(&[Reduce(PK::PropertiesEachOfProperties, 3usize)]),
+        TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::Property1P1, 3usize)]),
+        TK::COMMA => Vec::from(&[Reduce(PK::Property1P1, 3usize)]),
         _ => vec![],
     }
 }
-fn action_number_s26(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_quoted_string_s31(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::SingleValueStringValue, 1usize)]),
+        TK::COMMA => Vec::from(&[Reduce(PK::SingleValueStringValue, 1usize)]),
+        TK::CLOSESQUAREBRACKET => {
+            Vec::from(&[Reduce(PK::SingleValueStringValue, 1usize)])
+        }
+        _ => vec![],
+    }
+}
+fn action_number_s32(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::SingleValueNumberValue, 1usize)]),
         TK::COMMA => Vec::from(&[Reduce(PK::SingleValueNumberValue, 1usize)]),
+        TK::CLOSESQUAREBRACKET => {
+            Vec::from(&[Reduce(PK::SingleValueNumberValue, 1usize)])
+        }
         _ => vec![],
     }
 }
-fn action_quote_s27(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_opensquarebracket_s33(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::UNQUOTED_STRING => Vec::from(&[Shift(State::UNQUOTED_STRINGS30)]),
+        TK::QUOTED_STRING => Vec::from(&[Shift(State::QUOTED_STRINGS31)]),
+        TK::NUMBER => Vec::from(&[Shift(State::NUMBERS32)]),
         _ => vec![],
     }
 }
-fn action_values_s28(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_values_s34(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::PropertyP1, 3usize)]),
         TK::COMMA => Vec::from(&[Reduce(PK::PropertyP1, 3usize)]),
         _ => vec![],
     }
 }
-fn action_singlevalue_s29(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_singlevalue_s35(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::ValuesP2, 1usize)]),
-        TK::COMMA => Vec::from(&[Reduce(PK::ValuesP2, 1usize)]),
+        TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::ValuesP1, 1usize)]),
+        TK::COMMA => Vec::from(&[Reduce(PK::ValuesP1, 1usize)]),
         _ => vec![],
     }
 }
-fn action_unquoted_string_s30(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_listvalues_s36(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::QUOTE => Vec::from(&[Shift(State::QUOTES32)]),
+        TK::CLOSESQUAREBRACKET => Vec::from(&[Shift(State::CLOSESQUAREBRACKETS39)]),
         _ => vec![],
     }
 }
-fn action_comma_s31(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_singlevalue1_s37(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::NUMBER => Vec::from(&[Shift(State::NUMBERS26)]),
-        TK::QUOTE => Vec::from(&[Shift(State::QUOTES27)]),
+        TK::COMMA => Vec::from(&[Shift(State::COMMAS40)]),
+        TK::CLOSESQUAREBRACKET => Vec::from(&[Reduce(PK::ListValuesP1, 1usize)]),
         _ => vec![],
     }
 }
-fn action_quote_s32(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_singlevalue_s38(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::SingleValueStringValue, 3usize)]),
-        TK::COMMA => Vec::from(&[Reduce(PK::SingleValueStringValue, 3usize)]),
+        TK::COMMA => Vec::from(&[Reduce(PK::SingleValue1P2, 1usize)]),
+        TK::CLOSESQUAREBRACKET => Vec::from(&[Reduce(PK::SingleValue1P2, 1usize)]),
         _ => vec![],
     }
 }
-fn action_values_s33(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_closesquarebracket_s39(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::ValuesEachOfValues, 3usize)]),
-        TK::COMMA => Vec::from(&[Reduce(PK::ValuesEachOfValues, 3usize)]),
+        TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::ValuesListValue, 3usize)]),
+        TK::COMMA => Vec::from(&[Reduce(PK::ValuesListValue, 3usize)]),
+        _ => vec![],
+    }
+}
+fn action_comma_s40(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::QUOTED_STRING => Vec::from(&[Shift(State::QUOTED_STRINGS31)]),
+        TK::NUMBER => Vec::from(&[Shift(State::NUMBERS32)]),
+        _ => vec![],
+    }
+}
+fn action_singlevalue_s41(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::COMMA => Vec::from(&[Reduce(PK::SingleValue1P1, 3usize)]),
+        TK::CLOSESQUAREBRACKET => Vec::from(&[Reduce(PK::SingleValue1P1, 3usize)]),
         _ => vec![],
     }
 }
@@ -526,7 +641,8 @@ fn goto_aug_s0(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
         NonTermKind::Pg => State::PgS2,
         NonTermKind::Nodes => State::NodesS3,
-        NonTermKind::Node => State::NodeS4,
+        NonTermKind::Node1 => State::Node1S4,
+        NonTermKind::Node => State::NodeS5,
         _ => {
             panic!(
                 "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
@@ -537,7 +653,7 @@ fn goto_aug_s0(nonterm_kind: NonTermKind) -> State {
 }
 fn goto_open_paren_s1(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
-        NonTermKind::Id => State::IdS6,
+        NonTermKind::Id => State::IdS7,
         _ => {
             panic!(
                 "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
@@ -546,89 +662,111 @@ fn goto_open_paren_s1(nonterm_kind: NonTermKind) -> State {
         }
     }
 }
-fn goto_id_s6(nonterm_kind: NonTermKind) -> State {
+fn goto_id_s7(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
-        NonTermKind::LabelPropertySpec => State::LabelPropertySpecS9,
-        NonTermKind::LabelSpecOpt => State::LabelSpecOptS10,
-        NonTermKind::LabelSpec => State::LabelSpecS11,
+        NonTermKind::LabelPropertySpec => State::LabelPropertySpecS10,
+        NonTermKind::LabelSpecOpt => State::LabelSpecOptS11,
+        NonTermKind::LabelSpec => State::LabelSpecS12,
         _ => {
             panic!(
                 "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
-                State::IdS6
+                State::IdS7
             )
         }
     }
 }
-fn goto_comma_s7(nonterm_kind: NonTermKind) -> State {
+fn goto_semicolon_s8(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
-        NonTermKind::Nodes => State::NodesS12,
-        NonTermKind::Node => State::NodeS4,
+        NonTermKind::Node => State::NodeS13,
         _ => {
             panic!(
                 "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
-                State::COMMAS7
+                State::SEMICOLONS8
             )
         }
     }
 }
-fn goto_labelspecopt_s10(nonterm_kind: NonTermKind) -> State {
+fn goto_colon_s9(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
-        NonTermKind::PropertySpecOpt => State::PropertySpecOptS16,
-        NonTermKind::PropertySpec => State::PropertySpecS17,
+        NonTermKind::IDENTIFIER1 => State::IDENTIFIER1S15,
         _ => {
             panic!(
                 "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
-                State::LabelSpecOptS10
+                State::COLONS9
             )
         }
     }
 }
-fn goto_open_curly_s15(nonterm_kind: NonTermKind) -> State {
+fn goto_labelspecopt_s11(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
-        NonTermKind::Properties => State::PropertiesS19,
-        NonTermKind::Property => State::PropertyS20,
-        NonTermKind::key => State::keyS21,
+        NonTermKind::PropertySpecOpt => State::PropertySpecOptS18,
+        NonTermKind::PropertySpec => State::PropertySpecS19,
         _ => {
             panic!(
                 "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
-                State::OPEN_CURLYS15
+                State::LabelSpecOptS11
             )
         }
     }
 }
-fn goto_comma_s23(nonterm_kind: NonTermKind) -> State {
+fn goto_open_curly_s17(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
-        NonTermKind::Properties => State::PropertiesS25,
-        NonTermKind::Property => State::PropertyS20,
-        NonTermKind::key => State::keyS21,
+        NonTermKind::Properties => State::PropertiesS22,
+        NonTermKind::Property1 => State::Property1S23,
+        NonTermKind::Property => State::PropertyS24,
+        NonTermKind::key => State::keyS25,
         _ => {
             panic!(
                 "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
-                State::COMMAS23
+                State::OPEN_CURLYS17
             )
         }
     }
 }
-fn goto_colon_s24(nonterm_kind: NonTermKind) -> State {
+fn goto_comma_s28(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
-        NonTermKind::Values => State::ValuesS28,
-        NonTermKind::SingleValue => State::SingleValueS29,
+        NonTermKind::Property => State::PropertyS30,
+        NonTermKind::key => State::keyS25,
         _ => {
             panic!(
                 "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
-                State::COLONS24
+                State::COMMAS28
             )
         }
     }
 }
-fn goto_comma_s31(nonterm_kind: NonTermKind) -> State {
+fn goto_colon_s29(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
-        NonTermKind::Values => State::ValuesS33,
-        NonTermKind::SingleValue => State::SingleValueS29,
+        NonTermKind::Values => State::ValuesS34,
+        NonTermKind::SingleValue => State::SingleValueS35,
         _ => {
             panic!(
                 "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
-                State::COMMAS31
+                State::COLONS29
+            )
+        }
+    }
+}
+fn goto_opensquarebracket_s33(nonterm_kind: NonTermKind) -> State {
+    match nonterm_kind {
+        NonTermKind::ListValues => State::ListValuesS36,
+        NonTermKind::SingleValue1 => State::SingleValue1S37,
+        NonTermKind::SingleValue => State::SingleValueS38,
+        _ => {
+            panic!(
+                "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
+                State::OPENSQUAREBRACKETS33
+            )
+        }
+    }
+}
+fn goto_comma_s40(nonterm_kind: NonTermKind) -> State {
+    match nonterm_kind {
+        NonTermKind::SingleValue => State::SingleValueS41,
+        _ => {
+            panic!(
+                "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
+                State::COMMAS40
             )
         }
     }
@@ -642,36 +780,44 @@ pub(crate) static PARSER_DEFINITION: PgParserDefinition = PgParserDefinition {
         action_open_paren_s1,
         action_pg_s2,
         action_nodes_s3,
-        action_node_s4,
-        action_identifier_s5,
-        action_id_s6,
-        action_comma_s7,
-        action_colon_s8,
-        action_labelpropertyspec_s9,
-        action_labelspecopt_s10,
-        action_labelspec_s11,
-        action_nodes_s12,
-        action_identifier_s13,
-        action_close_paren_s14,
-        action_open_curly_s15,
-        action_propertyspecopt_s16,
-        action_propertyspec_s17,
-        action_identifier_s18,
-        action_properties_s19,
-        action_property_s20,
-        action_key_s21,
-        action_close_curly_s22,
-        action_comma_s23,
-        action_colon_s24,
-        action_properties_s25,
-        action_number_s26,
-        action_quote_s27,
-        action_values_s28,
-        action_singlevalue_s29,
-        action_unquoted_string_s30,
-        action_comma_s31,
-        action_quote_s32,
-        action_values_s33,
+        action_node1_s4,
+        action_node_s5,
+        action_identifier_s6,
+        action_id_s7,
+        action_semicolon_s8,
+        action_colon_s9,
+        action_labelpropertyspec_s10,
+        action_labelspecopt_s11,
+        action_labelspec_s12,
+        action_node_s13,
+        action_identifier_s14,
+        action_identifier1_s15,
+        action_close_paren_s16,
+        action_open_curly_s17,
+        action_propertyspecopt_s18,
+        action_propertyspec_s19,
+        action_ampersand_s20,
+        action_identifier_s21,
+        action_properties_s22,
+        action_property1_s23,
+        action_property_s24,
+        action_key_s25,
+        action_identifier_s26,
+        action_close_curly_s27,
+        action_comma_s28,
+        action_colon_s29,
+        action_property_s30,
+        action_quoted_string_s31,
+        action_number_s32,
+        action_opensquarebracket_s33,
+        action_values_s34,
+        action_singlevalue_s35,
+        action_listvalues_s36,
+        action_singlevalue1_s37,
+        action_singlevalue_s38,
+        action_closesquarebracket_s39,
+        action_comma_s40,
+        action_singlevalue_s41,
     ],
     gotos: [
         goto_aug_s0,
@@ -680,41 +826,50 @@ pub(crate) static PARSER_DEFINITION: PgParserDefinition = PgParserDefinition {
         goto_invalid,
         goto_invalid,
         goto_invalid,
-        goto_id_s6,
-        goto_comma_s7,
         goto_invalid,
+        goto_id_s7,
+        goto_semicolon_s8,
+        goto_colon_s9,
         goto_invalid,
-        goto_labelspecopt_s10,
-        goto_invalid,
-        goto_invalid,
-        goto_invalid,
-        goto_invalid,
-        goto_open_curly_s15,
+        goto_labelspecopt_s11,
         goto_invalid,
         goto_invalid,
         goto_invalid,
         goto_invalid,
         goto_invalid,
-        goto_invalid,
-        goto_invalid,
-        goto_comma_s23,
-        goto_colon_s24,
+        goto_open_curly_s17,
         goto_invalid,
         goto_invalid,
         goto_invalid,
         goto_invalid,
         goto_invalid,
         goto_invalid,
-        goto_comma_s31,
         goto_invalid,
+        goto_invalid,
+        goto_invalid,
+        goto_invalid,
+        goto_comma_s28,
+        goto_colon_s29,
+        goto_invalid,
+        goto_invalid,
+        goto_invalid,
+        goto_opensquarebracket_s33,
+        goto_invalid,
+        goto_invalid,
+        goto_invalid,
+        goto_invalid,
+        goto_invalid,
+        goto_invalid,
+        goto_comma_s40,
         goto_invalid,
     ],
     token_kinds: [
         [Some((TK::OPEN_PAREN, true)), None, None],
         [Some((TK::IDENTIFIER, false)), None, None],
         [Some((TK::STOP, false)), None, None],
-        [Some((TK::STOP, true)), Some((TK::COMMA, true)), None],
-        [Some((TK::STOP, true)), Some((TK::COMMA, true)), None],
+        [Some((TK::STOP, false)), None, None],
+        [Some((TK::STOP, true)), Some((TK::SEMICOLON, true)), None],
+        [Some((TK::STOP, true)), Some((TK::SEMICOLON, true)), None],
         [
             Some((TK::CLOSE_PAREN, true)),
             Some((TK::OPEN_CURLY, true)),
@@ -730,28 +885,59 @@ pub(crate) static PARSER_DEFINITION: PgParserDefinition = PgParserDefinition {
         [Some((TK::CLOSE_PAREN, true)), None, None],
         [Some((TK::CLOSE_PAREN, true)), Some((TK::OPEN_CURLY, true)), None],
         [Some((TK::CLOSE_PAREN, true)), Some((TK::OPEN_CURLY, true)), None],
-        [Some((TK::STOP, true)), Some((TK::COMMA, true)), None],
-        [Some((TK::CLOSE_PAREN, true)), Some((TK::OPEN_CURLY, true)), None],
-        [Some((TK::STOP, true)), Some((TK::COMMA, true)), None],
+        [Some((TK::STOP, true)), Some((TK::SEMICOLON, true)), None],
+        [
+            Some((TK::CLOSE_PAREN, true)),
+            Some((TK::OPEN_CURLY, true)),
+            Some((TK::AMPERSAND, true)),
+        ],
+        [
+            Some((TK::CLOSE_PAREN, true)),
+            Some((TK::OPEN_CURLY, true)),
+            Some((TK::AMPERSAND, true)),
+        ],
+        [Some((TK::STOP, true)), Some((TK::SEMICOLON, true)), None],
         [Some((TK::IDENTIFIER, false)), None, None],
         [Some((TK::CLOSE_PAREN, true)), None, None],
         [Some((TK::CLOSE_PAREN, true)), None, None],
+        [Some((TK::IDENTIFIER, false)), None, None],
         [Some((TK::COLON, true)), None, None],
+        [Some((TK::CLOSE_CURLY, true)), None, None],
         [Some((TK::CLOSE_CURLY, true)), Some((TK::COMMA, true)), None],
         [Some((TK::CLOSE_CURLY, true)), Some((TK::COMMA, true)), None],
         [Some((TK::COLON, true)), None, None],
+        [
+            Some((TK::CLOSE_PAREN, true)),
+            Some((TK::OPEN_CURLY, true)),
+            Some((TK::AMPERSAND, true)),
+        ],
         [Some((TK::CLOSE_PAREN, true)), None, None],
         [Some((TK::IDENTIFIER, false)), None, None],
-        [Some((TK::QUOTE, true)), Some((TK::NUMBER, false)), None],
+        [
+            Some((TK::OPENSQUAREBRACKET, true)),
+            Some((TK::QUOTED_STRING, false)),
+            Some((TK::NUMBER, false)),
+        ],
+        [Some((TK::CLOSE_CURLY, true)), Some((TK::COMMA, true)), None],
+        [
+            Some((TK::CLOSE_CURLY, true)),
+            Some((TK::COMMA, true)),
+            Some((TK::CLOSESQUAREBRACKET, true)),
+        ],
+        [
+            Some((TK::CLOSE_CURLY, true)),
+            Some((TK::COMMA, true)),
+            Some((TK::CLOSESQUAREBRACKET, true)),
+        ],
+        [Some((TK::QUOTED_STRING, false)), Some((TK::NUMBER, false)), None],
         [Some((TK::CLOSE_CURLY, true)), Some((TK::COMMA, true)), None],
         [Some((TK::CLOSE_CURLY, true)), Some((TK::COMMA, true)), None],
-        [Some((TK::UNQUOTED_STRING, false)), None, None],
+        [Some((TK::CLOSESQUAREBRACKET, true)), None, None],
+        [Some((TK::COMMA, true)), Some((TK::CLOSESQUAREBRACKET, true)), None],
+        [Some((TK::COMMA, true)), Some((TK::CLOSESQUAREBRACKET, true)), None],
         [Some((TK::CLOSE_CURLY, true)), Some((TK::COMMA, true)), None],
-        [Some((TK::CLOSE_CURLY, true)), Some((TK::COMMA, true)), None],
-        [Some((TK::QUOTE, true)), None, None],
-        [Some((TK::QUOTE, true)), Some((TK::NUMBER, false)), None],
-        [Some((TK::CLOSE_CURLY, true)), Some((TK::COMMA, true)), None],
-        [Some((TK::CLOSE_CURLY, true)), Some((TK::COMMA, true)), None],
+        [Some((TK::QUOTED_STRING, false)), Some((TK::NUMBER, false)), None],
+        [Some((TK::COMMA, true)), Some((TK::CLOSESQUAREBRACKET, true)), None],
     ],
 };
 impl ParserDefinition<State, ProdKind, TokenKind, NonTermKind> for PgParserDefinition {
@@ -898,7 +1084,7 @@ impl<'i> TokenRecognizerT<'i> for TokenRecognizer {
 pub(crate) static RECOGNIZERS: [TokenRecognizer; TERMINAL_COUNT] = [
     TokenRecognizer(TokenKind::STOP, Recognizer::Stop),
     TokenRecognizer(
-        TokenKind::UNQUOTED_STRING,
+        TokenKind::QUOTED_STRING,
         Recognizer::RegexMatch(
             Lazy::new(|| { Regex::new(concat!("^", "\"((\\\\\")|[^\"])*\"")).unwrap() }),
         ),
@@ -938,6 +1124,9 @@ pub(crate) static RECOGNIZERS: [TokenRecognizer; TERMINAL_COUNT] = [
     ),
     TokenRecognizer(TokenKind::OPTIONAL, Recognizer::StrMatch("OPTIONAL")),
     TokenRecognizer(TokenKind::QUOTE, Recognizer::StrMatch("\\\"")),
+    TokenRecognizer(TokenKind::AMPERSAND, Recognizer::StrMatch("&")),
+    TokenRecognizer(TokenKind::OPENSQUAREBRACKET, Recognizer::StrMatch("[")),
+    TokenRecognizer(TokenKind::CLOSESQUAREBRACKET, Recognizer::StrMatch("]")),
 ];
 pub struct DefaultBuilder {
     res_stack: Vec<Symbol>,
@@ -967,12 +1156,13 @@ for DefaultBuilder {
     ) {
         let val = match token.kind {
             TokenKind::STOP => panic!("Cannot shift STOP token!"),
-            TokenKind::UNQUOTED_STRING => {
-                Terminal::UNQUOTED_STRING(pg_actions::unquoted_string(context, token))
+            TokenKind::QUOTED_STRING => {
+                Terminal::QUOTED_STRING(pg_actions::quoted_string(context, token))
             }
             TokenKind::IDENTIFIER => {
                 Terminal::IDENTIFIER(pg_actions::identifier(context, token))
             }
+            TokenKind::SEMICOLON => Terminal::SEMICOLON,
             TokenKind::OPEN_PAREN => Terminal::OPEN_PAREN,
             TokenKind::CLOSE_PAREN => Terminal::CLOSE_PAREN,
             TokenKind::OPEN_CURLY => Terminal::OPEN_CURLY,
@@ -980,7 +1170,9 @@ for DefaultBuilder {
             TokenKind::COLON => Terminal::COLON,
             TokenKind::COMMA => Terminal::COMMA,
             TokenKind::NUMBER => Terminal::NUMBER(pg_actions::number(context, token)),
-            TokenKind::QUOTE => Terminal::QUOTE,
+            TokenKind::AMPERSAND => Terminal::AMPERSAND,
+            TokenKind::OPENSQUAREBRACKET => Terminal::OPENSQUAREBRACKET,
+            TokenKind::CLOSESQUAREBRACKET => Terminal::CLOSESQUAREBRACKET,
             _ => panic!("Shift of unreachable terminal!"),
         };
         self.res_stack.push(Symbol::Terminal(val));
@@ -1004,28 +1196,40 @@ for DefaultBuilder {
                     _ => panic!("Invalid symbol parse stack data."),
                 }
             }
-            ProdKind::NodesEachOf => {
+            ProdKind::NodesP1 => {
+                let mut i = self
+                    .res_stack
+                    .split_off(self.res_stack.len() - 1usize)
+                    .into_iter();
+                match i.next().unwrap() {
+                    Symbol::NonTerminal(NonTerminal::Node1(p0)) => {
+                        NonTerminal::Nodes(pg_actions::nodes_node1(context, p0))
+                    }
+                    _ => panic!("Invalid symbol parse stack data."),
+                }
+            }
+            ProdKind::Node1P1 => {
                 let mut i = self
                     .res_stack
                     .split_off(self.res_stack.len() - 3usize)
                     .into_iter();
                 match (i.next().unwrap(), i.next().unwrap(), i.next().unwrap()) {
                     (
-                        Symbol::NonTerminal(NonTerminal::Nodes(p0)),
+                        Symbol::NonTerminal(NonTerminal::Node1(p0)),
                         _,
-                        Symbol::NonTerminal(NonTerminal::Nodes(p1)),
-                    ) => NonTerminal::Nodes(pg_actions::nodes_each_of(context, p0, p1)),
+                        Symbol::NonTerminal(NonTerminal::Node(p1)),
+                    ) => NonTerminal::Node1(pg_actions::node1_c1(context, p0, p1)),
                     _ => panic!("Invalid symbol parse stack data."),
                 }
             }
-            ProdKind::NodesSingleNode => {
+            ProdKind::Node1P2 => {
                 let mut i = self
                     .res_stack
                     .split_off(self.res_stack.len() - 1usize)
                     .into_iter();
                 match i.next().unwrap() {
                     Symbol::NonTerminal(NonTerminal::Node(p0)) => {
-                        NonTerminal::Nodes(pg_actions::nodes_single_node(context, p0))
+                        NonTerminal::Node1(pg_actions::node1_node(context, p0))
                     }
                     _ => panic!("Invalid symbol parse stack data."),
                 }
@@ -1121,9 +1325,41 @@ for DefaultBuilder {
                     .split_off(self.res_stack.len() - 2usize)
                     .into_iter();
                 match (i.next().unwrap(), i.next().unwrap()) {
-                    (_, Symbol::Terminal(Terminal::IDENTIFIER(p0))) => {
+                    (_, Symbol::NonTerminal(NonTerminal::IDENTIFIER1(p0))) => {
                         NonTerminal::LabelSpec(
-                            pg_actions::label_spec_identifier(context, p0),
+                            pg_actions::label_spec_identifier1(context, p0),
+                        )
+                    }
+                    _ => panic!("Invalid symbol parse stack data."),
+                }
+            }
+            ProdKind::IDENTIFIER1P1 => {
+                let mut i = self
+                    .res_stack
+                    .split_off(self.res_stack.len() - 3usize)
+                    .into_iter();
+                match (i.next().unwrap(), i.next().unwrap(), i.next().unwrap()) {
+                    (
+                        Symbol::NonTerminal(NonTerminal::IDENTIFIER1(p0)),
+                        _,
+                        Symbol::Terminal(Terminal::IDENTIFIER(p1)),
+                    ) => {
+                        NonTerminal::IDENTIFIER1(
+                            pg_actions::identifier1_c1(context, p0, p1),
+                        )
+                    }
+                    _ => panic!("Invalid symbol parse stack data."),
+                }
+            }
+            ProdKind::IDENTIFIER1P2 => {
+                let mut i = self
+                    .res_stack
+                    .split_off(self.res_stack.len() - 1usize)
+                    .into_iter();
+                match i.next().unwrap() {
+                    Symbol::Terminal(Terminal::IDENTIFIER(p0)) => {
+                        NonTerminal::IDENTIFIER1(
+                            pg_actions::identifier1_identifier(context, p0),
                         )
                     }
                     _ => panic!("Invalid symbol parse stack data."),
@@ -1143,33 +1379,45 @@ for DefaultBuilder {
                     _ => panic!("Invalid symbol parse stack data."),
                 }
             }
-            ProdKind::PropertiesEachOfProperties => {
+            ProdKind::PropertiesP1 => {
+                let mut i = self
+                    .res_stack
+                    .split_off(self.res_stack.len() - 1usize)
+                    .into_iter();
+                match i.next().unwrap() {
+                    Symbol::NonTerminal(NonTerminal::Property1(p0)) => {
+                        NonTerminal::Properties(
+                            pg_actions::properties_property1(context, p0),
+                        )
+                    }
+                    _ => panic!("Invalid symbol parse stack data."),
+                }
+            }
+            ProdKind::Property1P1 => {
                 let mut i = self
                     .res_stack
                     .split_off(self.res_stack.len() - 3usize)
                     .into_iter();
                 match (i.next().unwrap(), i.next().unwrap(), i.next().unwrap()) {
                     (
-                        Symbol::NonTerminal(NonTerminal::Properties(p0)),
+                        Symbol::NonTerminal(NonTerminal::Property1(p0)),
                         _,
-                        Symbol::NonTerminal(NonTerminal::Properties(p1)),
+                        Symbol::NonTerminal(NonTerminal::Property(p1)),
                     ) => {
-                        NonTerminal::Properties(
-                            pg_actions::properties_each_of_properties(context, p0, p1),
-                        )
+                        NonTerminal::Property1(pg_actions::property1_c1(context, p0, p1))
                     }
                     _ => panic!("Invalid symbol parse stack data."),
                 }
             }
-            ProdKind::PropertiesBaseProperty => {
+            ProdKind::Property1P2 => {
                 let mut i = self
                     .res_stack
                     .split_off(self.res_stack.len() - 1usize)
                     .into_iter();
                 match i.next().unwrap() {
                     Symbol::NonTerminal(NonTerminal::Property(p0)) => {
-                        NonTerminal::Properties(
-                            pg_actions::properties_base_property(context, p0),
+                        NonTerminal::Property1(
+                            pg_actions::property1_property(context, p0),
                         )
                     }
                     _ => panic!("Invalid symbol parse stack data."),
@@ -1201,25 +1449,7 @@ for DefaultBuilder {
                     _ => panic!("Invalid symbol parse stack data."),
                 }
             }
-            ProdKind::ValuesEachOfValues => {
-                let mut i = self
-                    .res_stack
-                    .split_off(self.res_stack.len() - 3usize)
-                    .into_iter();
-                match (i.next().unwrap(), i.next().unwrap(), i.next().unwrap()) {
-                    (
-                        Symbol::NonTerminal(NonTerminal::Values(p0)),
-                        _,
-                        Symbol::NonTerminal(NonTerminal::Values(p1)),
-                    ) => {
-                        NonTerminal::Values(
-                            pg_actions::values_each_of_values(context, p0, p1),
-                        )
-                    }
-                    _ => panic!("Invalid symbol parse stack data."),
-                }
-            }
-            ProdKind::ValuesP2 => {
+            ProdKind::ValuesP1 => {
                 let mut i = self
                     .res_stack
                     .split_off(self.res_stack.len() - 1usize)
@@ -1231,13 +1461,71 @@ for DefaultBuilder {
                     _ => panic!("Invalid symbol parse stack data."),
                 }
             }
-            ProdKind::SingleValueStringValue => {
+            ProdKind::ValuesListValue => {
                 let mut i = self
                     .res_stack
                     .split_off(self.res_stack.len() - 3usize)
                     .into_iter();
                 match (i.next().unwrap(), i.next().unwrap(), i.next().unwrap()) {
-                    (_, Symbol::Terminal(Terminal::UNQUOTED_STRING(p0)), _) => {
+                    (_, Symbol::NonTerminal(NonTerminal::ListValues(p0)), _) => {
+                        NonTerminal::Values(pg_actions::values_list_value(context, p0))
+                    }
+                    _ => panic!("Invalid symbol parse stack data."),
+                }
+            }
+            ProdKind::ListValuesP1 => {
+                let mut i = self
+                    .res_stack
+                    .split_off(self.res_stack.len() - 1usize)
+                    .into_iter();
+                match i.next().unwrap() {
+                    Symbol::NonTerminal(NonTerminal::SingleValue1(p0)) => {
+                        NonTerminal::ListValues(
+                            pg_actions::list_values_single_value1(context, p0),
+                        )
+                    }
+                    _ => panic!("Invalid symbol parse stack data."),
+                }
+            }
+            ProdKind::SingleValue1P1 => {
+                let mut i = self
+                    .res_stack
+                    .split_off(self.res_stack.len() - 3usize)
+                    .into_iter();
+                match (i.next().unwrap(), i.next().unwrap(), i.next().unwrap()) {
+                    (
+                        Symbol::NonTerminal(NonTerminal::SingleValue1(p0)),
+                        _,
+                        Symbol::NonTerminal(NonTerminal::SingleValue(p1)),
+                    ) => {
+                        NonTerminal::SingleValue1(
+                            pg_actions::single_value1_c1(context, p0, p1),
+                        )
+                    }
+                    _ => panic!("Invalid symbol parse stack data."),
+                }
+            }
+            ProdKind::SingleValue1P2 => {
+                let mut i = self
+                    .res_stack
+                    .split_off(self.res_stack.len() - 1usize)
+                    .into_iter();
+                match i.next().unwrap() {
+                    Symbol::NonTerminal(NonTerminal::SingleValue(p0)) => {
+                        NonTerminal::SingleValue1(
+                            pg_actions::single_value1_single_value(context, p0),
+                        )
+                    }
+                    _ => panic!("Invalid symbol parse stack data."),
+                }
+            }
+            ProdKind::SingleValueStringValue => {
+                let mut i = self
+                    .res_stack
+                    .split_off(self.res_stack.len() - 1usize)
+                    .into_iter();
+                match i.next().unwrap() {
+                    Symbol::Terminal(Terminal::QUOTED_STRING(p0)) => {
                         NonTerminal::SingleValue(
                             pg_actions::single_value_string_value(context, p0),
                         )

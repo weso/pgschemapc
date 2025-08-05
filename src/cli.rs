@@ -31,10 +31,17 @@ pub enum Command {
         name = "validate",
         about = "Validate a property graph with a property graph schema"
     )]
+    #[command(name = "map", about = "Process and validate type map associations")]
+    TypeMap {
+        #[arg(short, long, help = "Path to the type map associations file")]
+        map: String,
+    },
     Validate {
         #[arg(short, long, help = "Path to the property graph file")]
         graph: String,
         #[arg(short, long, help = "Path to the property graph schema file")]
         schema: String,
+        #[arg(short, long, help = "Path to the type map associations file")]
+        map: String,
     },
 }

@@ -1,5 +1,3 @@
-use tracing::span::Record;
-
 use crate::boolean_expr::BooleanExpr;
 use crate::card::Card;
 use crate::formal_base_type::FormalBaseType;

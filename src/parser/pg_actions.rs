@@ -6,8 +6,8 @@ pub type Input = str;
 pub type Ctx<'i> = Context<'i, Input>;
 #[allow(dead_code)]
 pub type Token<'i> = RustemoToken<'i, Input, TokenKind>;
-pub type UNQUOTED_STRING = String;
-pub fn unquoted_string(_ctx: &Ctx, token: Token) -> UNQUOTED_STRING {
+pub type QUOTED_STRING = String;
+pub fn quoted_string(_ctx: &Ctx, token: Token) -> QUOTED_STRING {
     token.value.into()
 }
 pub type IDENTIFIER = String;
@@ -22,24 +22,17 @@ pub type Pg = Nodes;
 pub fn pg_nodes(_ctx: &Ctx, nodes: Nodes) -> Pg {
     nodes
 }
-#[derive(Debug, Clone)]
-pub struct EachOf {
-    pub left: Box<Nodes>,
-    pub right: Box<Nodes>,
+pub type Nodes = Node1;
+pub fn nodes_node1(_ctx: &Ctx, node1: Node1) -> Nodes {
+    node1
 }
-#[derive(Debug, Clone)]
-pub enum Nodes {
-    EachOf(EachOf),
-    SingleNode(Node),
+pub type Node1 = Vec<Node>;
+pub fn node1_c1(_ctx: &Ctx, mut node1: Node1, node: Node) -> Node1 {
+    node1.push(node);
+    node1
 }
-pub fn nodes_each_of(_ctx: &Ctx, left: Nodes, right: Nodes) -> Nodes {
-    Nodes::EachOf(EachOf {
-        left: Box::new(left),
-        right: Box::new(right),
-    })
-}
-pub fn nodes_single_node(_ctx: &Ctx, node: Node) -> Nodes {
-    Nodes::SingleNode(node)
+pub fn node1_node(_ctx: &Ctx, node: Node) -> Node1 {
+    vec![node]
 }
 #[derive(Debug, Clone)]
 pub struct Node {
@@ -85,36 +78,41 @@ pub fn property_spec_opt_property_spec(
 pub fn property_spec_opt_empty(_ctx: &Ctx) -> PropertySpecOpt {
     None
 }
-pub type LabelSpec = IDENTIFIER;
-pub fn label_spec_identifier(_ctx: &Ctx, identifier: IDENTIFIER) -> LabelSpec {
-    identifier
+pub type LabelSpec = IDENTIFIER1;
+pub fn label_spec_identifier1(_ctx: &Ctx, identifier1: IDENTIFIER1) -> LabelSpec {
+    identifier1
+}
+pub type IDENTIFIER1 = Vec<IDENTIFIER>;
+pub fn identifier1_c1(
+    _ctx: &Ctx,
+    mut identifier1: IDENTIFIER1,
+    identifier: IDENTIFIER,
+) -> IDENTIFIER1 {
+    identifier1.push(identifier);
+    identifier1
+}
+pub fn identifier1_identifier(_ctx: &Ctx, identifier: IDENTIFIER) -> IDENTIFIER1 {
+    vec![identifier]
 }
 pub type PropertySpec = Properties;
 pub fn property_spec_properties(_ctx: &Ctx, properties: Properties) -> PropertySpec {
     properties
 }
-#[derive(Debug, Clone)]
-pub struct EachOfProperties {
-    pub left: Box<Properties>,
-    pub right: Box<Properties>,
+pub type Properties = Property1;
+pub fn properties_property1(_ctx: &Ctx, property1: Property1) -> Properties {
+    property1
 }
-#[derive(Debug, Clone)]
-pub enum Properties {
-    EachOfProperties(EachOfProperties),
-    BaseProperty(Property),
-}
-pub fn properties_each_of_properties(
+pub type Property1 = Vec<Property>;
+pub fn property1_c1(
     _ctx: &Ctx,
-    left: Properties,
-    right: Properties,
-) -> Properties {
-    Properties::EachOfProperties(EachOfProperties {
-        left: Box::new(left),
-        right: Box::new(right),
-    })
+    mut property1: Property1,
+    property: Property,
+) -> Property1 {
+    property1.push(property);
+    property1
 }
-pub fn properties_base_property(_ctx: &Ctx, property: Property) -> Properties {
-    Properties::BaseProperty(property)
+pub fn property1_property(_ctx: &Ctx, property: Property) -> Property1 {
+    vec![property]
 }
 #[derive(Debug, Clone)]
 pub struct Property {
@@ -129,34 +127,45 @@ pub fn key_identifier(_ctx: &Ctx, identifier: IDENTIFIER) -> key {
     identifier
 }
 #[derive(Debug, Clone)]
-pub struct EachOfValues {
-    pub left: Box<Values>,
-    pub right: Box<Values>,
-}
-#[derive(Debug, Clone)]
 pub enum Values {
-    EachOfValues(EachOfValues),
     SingleValue(SingleValue),
-}
-pub fn values_each_of_values(_ctx: &Ctx, left: Values, right: Values) -> Values {
-    Values::EachOfValues(EachOfValues {
-        left: Box::new(left),
-        right: Box::new(right),
-    })
+    ListValue(ListValues),
 }
 pub fn values_single_value(_ctx: &Ctx, single_value: SingleValue) -> Values {
     Values::SingleValue(single_value)
 }
+pub fn values_list_value(_ctx: &Ctx, list_values: ListValues) -> Values {
+    Values::ListValue(list_values)
+}
+pub type ListValues = SingleValue1;
+pub fn list_values_single_value1(_ctx: &Ctx, single_value1: SingleValue1) -> ListValues {
+    single_value1
+}
+pub type SingleValue1 = Vec<SingleValue>;
+pub fn single_value1_c1(
+    _ctx: &Ctx,
+    mut single_value1: SingleValue1,
+    single_value: SingleValue,
+) -> SingleValue1 {
+    single_value1.push(single_value);
+    single_value1
+}
+pub fn single_value1_single_value(
+    _ctx: &Ctx,
+    single_value: SingleValue,
+) -> SingleValue1 {
+    vec![single_value]
+}
 #[derive(Debug, Clone)]
 pub enum SingleValue {
-    StringValue(UNQUOTED_STRING),
+    StringValue(QUOTED_STRING),
     NumberValue(NUMBER),
 }
 pub fn single_value_string_value(
     _ctx: &Ctx,
-    unquoted_string: UNQUOTED_STRING,
+    quoted_string: QUOTED_STRING,
 ) -> SingleValue {
-    SingleValue::StringValue(unquoted_string)
+    SingleValue::StringValue(quoted_string)
 }
 pub fn single_value_number_value(_ctx: &Ctx, number: NUMBER) -> SingleValue {
     SingleValue::NumberValue(number)

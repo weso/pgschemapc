@@ -14,6 +14,7 @@ mod pgs_error;
 mod property_value_spec;
 mod record;
 mod record_type;
+mod type_map;
 mod type_name;
 mod value;
 mod value_type;
@@ -32,7 +33,9 @@ use crate::{
 use anyhow::*;
 use clap::Parser;
 use cli::{Cli, Command};
-use pgschemapc::parser::{pgs::PgsParser, pgs_builder::PgsBuilder};
+use pgschemapc::parser::{
+    map_builder::MapBuilder, pg_builder::PgBuilder, pgs::PgsParser, pgs_builder::PgsBuilder,
+};
 use rustemo::Parser as RustEmoParser;
 use std::collections::HashSet;
 use std::result::Result::Ok;
@@ -51,7 +54,8 @@ fn main() -> Result<()> {
     match &cli.command {
         Some(Command::Pgs { schema }) => run_pgs(schema),
         Some(Command::Pg { graph }) => run_pg(graph),
-        Some(Command::Validate { graph, schema }) => run_validate(graph, schema),
+        Some(Command::TypeMap { map }) => run_map(map),
+        Some(Command::Validate { graph, schema, map }) => run_validate(graph, schema),
         None => {
             bail!("Command not specified, type `--help` to see list of commands")
         }
@@ -79,7 +83,21 @@ fn run_pgs(schema: &str) -> Result<()> {
 fn run_pg(graph: &str) -> Result<()> {
     let graph_content = std::fs::read_to_string(graph)
         .with_context(|| format!("Failed to read graph file: {}", graph))?;
-    bail!("PG parser not implemented yet");
+    let pg = PgBuilder::new()
+        .parse_pg(graph_content.as_str())
+        .with_context(|| format!("Failed to parse graph: {}", graph))?;
+    println!("Property graph: {}", pg);
+    Ok(())
+}
+
+fn run_map(map: &str) -> Result<()> {
+    let map_content = std::fs::read_to_string(map)
+        .with_context(|| format!("Failed to read map file: {}", map))?;
+    let map = MapBuilder::new()
+        .parse_map(map_content.as_str())
+        .with_context(|| format!("Failed to parse map: {}", map))?;
+    println!("Type map associations: {}", map);
+    Ok(())
 }
 
 fn run_validate(graph: &str, schema: &str) -> Result<()> {

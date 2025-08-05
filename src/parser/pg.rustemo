@@ -1,9 +1,7 @@
 Pg:
     Nodes ;
 
-Nodes: left=Nodes "," right=Nodes {EachOf, 1, left}
-     | Node {SingleNode} 
-     ;
+Nodes: Node+[SEMICOLON] ;
 
 Node:
     "(" Id LabelPropertySpec ")" ;
@@ -15,15 +13,12 @@ LabelPropertySpec:
     LabelSpec? PropertySpec? ;
 
 LabelSpec:
-    ":" IDENTIFIER ;
+    ":" IDENTIFIER+[AMPERSAND] ;
 
 PropertySpec:
     OPEN_CURLY Properties CLOSE_CURLY ;
 
-Properties:
-      left=Properties "," right=Properties {EachOfProperties, 1, left} 
-    | Property {BaseProperty}
-    ;
+Properties: Property+[COMMA];
 
 Property:
     key ":" Values  ;
@@ -31,18 +26,20 @@ Property:
 key:
     IDENTIFIER ;
 
-Values: left=Values "," right=Values {EachOfValues, 2, left}
-      | SingleValue
+Values: SingleValue
+      | OPENSQUAREBRACKET ListValues CLOSESQUAREBRACKET {ListValue}
       ;
 
+ListValues: SingleValue+[COMMA] ;
+
 SingleValue:    
-      '\"' UNQUOTED_STRING '\"' {StringValue}
+      QUOTED_STRING {StringValue}
     | NUMBER {NumberValue}
     ;
 
 terminals
 
-UNQUOTED_STRING: /"((\\")|[^"])*"/ ;
+QUOTED_STRING: /"((\\")|[^"])*"/ ;
 
 IDENTIFIER:
     /\w+/ ;
@@ -118,3 +115,12 @@ OPTIONAL:
 
 QUOTE:
     '\"' ;
+
+AMPERSAND:
+    "&" ;
+
+OPENSQUAREBRACKET:
+    "[" ;
+
+CLOSESQUAREBRACKET:
+    "]" ;

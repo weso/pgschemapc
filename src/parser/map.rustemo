@@ -1,0 +1,32 @@
+Map:
+    Association+[COMMA]
+    ;
+
+Association:
+    NodeId SEMICOLON TypeName ;
+
+NodeId:
+    IDENTIFIER ;
+
+TypeName:
+    IDENTIFIER ;
+
+terminals
+
+IDENTIFIER:
+    /\w+/ ;
+
+AT:
+    "@" ;
+
+COMMA:
+    "," ;
+
+SEMICOLON:
+    ":" ;
+
+OPENBRACKET:
+    "[" ;
+
+CLOSEBRACKET:
+    "]" ;
