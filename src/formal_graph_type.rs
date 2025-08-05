@@ -1,8 +1,10 @@
 use std::{collections::HashMap, fmt::Display};
 
+use either::Either;
+
 use crate::{
-    label_property_spec::LabelPropertySpec, node::Node, pgs_error::PgsError, record::Record,
-    type_name::TypeName,
+    evidence::Evidence, label_property_spec::LabelPropertySpec, node::Node, pgs_error::PgsError,
+    record::Record, type_name::TypeName,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -34,12 +36,18 @@ impl FormalGraphType {
         self.map.get(type_name)
     }
 
-    pub fn conforms_node(&self, type_name: &TypeName, node: &Node) -> Result<bool, PgsError> {
+    pub fn conforms_node(
+        &self,
+        type_name: &TypeName,
+        node: &Node,
+    ) -> Either<Vec<PgsError>, Vec<Evidence>> {
         if let Some(label_property_spec) = self.get(type_name) {
-            let base_type = label_property_spec.semantics(self)?;
-            base_type.conforms(node.labels(), node.content())
+            match label_property_spec.semantics(self) {
+                Ok(base_type) => base_type.conforms(node.labels(), node.content()),
+                Err(e) => return Either::Left(vec![e]),
+            }
         } else {
-            Err(PgsError::MissingType(type_name.clone()))
+            Either::Left(vec![PgsError::MissingType(type_name.clone())])
         }
     }
 }

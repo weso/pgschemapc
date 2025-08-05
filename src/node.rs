@@ -117,20 +117,25 @@ mod tests {
         debug!("Semantics of person type: {:?}", semantics);
 
         assert_eq!(
-            graph.conforms_node(&"PersonType".to_string(), &alice),
-            Ok(true)
+            graph
+                .conforms_node(&"PersonType".to_string(), &alice)
+                .is_right(),
+            true
         );
-        assert_eq!(
-            graph.conforms_node(&"PersonType".to_string(), &alice_wrong1),
-            Ok(false)
+        assert!(
+            graph
+                .conforms_node(&"PersonType".to_string(), &alice_wrong1)
+                .is_left()
         );
-        assert_eq!(
-            graph.conforms_node(&"PersonType".to_string(), &alice_wrong2),
-            Ok(false)
+        assert!(
+            graph
+                .conforms_node(&"PersonType".to_string(), &alice_wrong2)
+                .is_left()
         );
-        assert_eq!(
-            graph.conforms_node(&"PersonType".to_string(), &alice_wrong3),
-            Ok(false)
+        assert!(
+            graph
+                .conforms_node(&"PersonType".to_string(), &alice_wrong3)
+                .is_left()
         )
     }
 
@@ -153,9 +158,10 @@ mod tests {
             "PersonType",
             LabelPropertySpec::content(person_label, PropertyValueSpec::closed(person_content)),
         );
-        assert_eq!(
-            graph.conforms_node(&"PersonType".to_string(), &alice),
-            Ok(false)
+        assert!(
+            graph
+                .conforms_node(&"PersonType".to_string(), &alice)
+                .is_left(),
         )
     }
 
@@ -185,13 +191,15 @@ mod tests {
             "PersonType",
             LabelPropertySpec::content(person_label, PropertyValueSpec::closed(person_content)),
         );
-        assert_eq!(
-            graph.conforms_node(&"PersonType".to_string(), &alice),
-            Ok(true)
+        assert!(
+            graph
+                .conforms_node(&"PersonType".to_string(), &alice)
+                .is_right()
         );
-        assert_eq!(
-            graph.conforms_node(&"PersonType".to_string(), &bob),
-            Ok(true)
+        assert!(
+            graph
+                .conforms_node(&"PersonType".to_string(), &bob)
+                .is_right()
         )
     }
 
@@ -237,19 +245,22 @@ mod tests {
             LabelPropertySpec::content(person_label, PropertyValueSpec::closed(person_content)),
         );
 
-        assert_eq!(
-            graph.conforms_node(&"PersonType".to_string(), &alice),
-            Ok(true)
+        assert!(
+            graph
+                .conforms_node(&"PersonType".to_string(), &alice)
+                .is_right()
         );
 
-        assert_eq!(
-            graph.conforms_node(&"PersonType".to_string(), &bob),
-            Ok(true)
+        assert!(
+            graph
+                .conforms_node(&"PersonType".to_string(), &bob)
+                .is_right()
         );
 
-        assert_eq!(
-            graph.conforms_node(&"PersonType".to_string(), &wrong1),
-            Ok(false)
+        assert!(
+            graph
+                .conforms_node(&"PersonType".to_string(), &wrong1)
+                .is_left()
         );
     }
 }

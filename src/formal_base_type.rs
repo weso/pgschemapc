@@ -1,6 +1,9 @@
 use std::collections::HashSet;
 
+use either::Either;
+
 use crate::{
+    evidence::Evidence,
     pgs_error::PgsError,
     record::Record,
     record_type::RecordType,
@@ -58,17 +61,27 @@ impl FormalBaseType {
         &self,
         labels: &HashSet<LabelName>,
         content: &Record,
-    ) -> Result<bool, PgsError> {
+    ) -> Either<Vec<PgsError>, Vec<Evidence>> {
         if self.labels != *labels {
             // TODO: Check openness of labels
-            return Ok(false);
+            return Either::Left::<Vec<PgsError>, Vec<Evidence>>(vec![PgsError::LabelsDifferent {
+                record_labels: format!("{:?}", labels),
+                type_labels: format!("{:?}", self.labels),
+            }]);
         }
         for record_type in &self.content {
             if record_type.conforms(content).is_right() {
-                return Ok(true);
-            }
+                return Either::Right(vec![Evidence::LabelsContentConforms {
+                    labels: format!("{:?}", labels),
+                    record: format!("{:?}", content),
+                    type_content: format!("{:?}", record_type),
+                }]);
+            };
         }
-        Ok(false)
+        Either::Left(vec![PgsError::RecordContentFails {
+            record: format!("{:?}", content),
+            type_content: format!("{:?}", self.content),
+        }])
     }
 
     /// Creates a FormalBaseType from a label.

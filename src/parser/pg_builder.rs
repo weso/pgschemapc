@@ -21,7 +21,7 @@ impl PgBuilder {
     pub fn new() -> Self {
         PgBuilder {}
     }
-    pub fn parse_pg(&self, input: &str) -> Result<PropertyGraph, PgsError> {
+    pub fn parse_pg(&self, input: &str) -> Result<crate::pg::PropertyGraph, PgsError> {
         let pg_content = PgParser::new()
             .parse(input)
             .map_err(|e| PgsError::PGParserError {

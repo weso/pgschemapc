@@ -10,6 +10,9 @@ pub enum PgsError {
     #[error("Not found type: {0}")]
     MissingType(TypeName),
 
+    #[error("Not found node with label: {label}")]
+    MissingLabel { label: String },
+
     #[error("Key not found in RecordType: {key} in Closed record type {record_type}")]
     KeyNotFoundClosedRecordType { key: Key, record_type: String },
 
@@ -33,4 +36,18 @@ pub enum PgsError {
 
     #[error("Parser error parsing property graph: {error}")]
     PGParserError { error: String },
+
+    #[error("Labels do not match: record labels {record_labels}, type labels {type_labels}")]
+    LabelsDifferent {
+        record_labels: String,
+        type_labels: String,
+    },
+
+    #[error(
+        "Record content does not conform to type content: record {record}, type content {type_content}"
+    )]
+    RecordContentFails {
+        record: String,
+        type_content: String,
+    },
 }

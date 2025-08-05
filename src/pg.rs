@@ -3,7 +3,7 @@ use std::{
     fmt::Display,
 };
 
-use crate::{edge::Edge, node::Node, record::Record, type_name::LabelName};
+use crate::{edge::Edge, node::Node, pgs_error::PgsError, record::Record, type_name::LabelName};
 
 /// Simple representation of a property graph
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -25,6 +25,15 @@ impl PropertyGraph {
             node_id_counter: 0,
             edge_id_counter: 0,
         }
+    }
+
+    pub fn get_node_by_label(&self, label: &str) -> Result<&Node, PgsError> {
+        let id = self.label_names.get(label).ok_or(PgsError::MissingLabel {
+            label: label.to_string(),
+        })?;
+        self.nodes.get(id).ok_or(PgsError::MissingLabel {
+            label: label.to_string(),
+        })
     }
 
     pub fn with_nodes(mut self, nodes: HashMap<usize, Node>) -> Self {

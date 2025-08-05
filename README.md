@@ -15,16 +15,43 @@ This implementation serves as a reference interpreter for the abstract grammar a
 
 The code has been implemented in Rust and it can be run using [cargo](https://doc.rust-lang.org/cargo/).
 
-The following command compiles and runs the simple command line tool:
+The following command compiles and generates an executable called `pgschemapc` in the `target/release` folder:
 
 ```sh
-cargo run
+cargo build --release
 ```
 
-As an example, it is possible to run a simple example as:
+Once it has been created, you can add it to your executable path or run `target/release/pgschemapc` (we will simpligy it as just `pgschemapc`).
+
+The command `pgschemapc --help` gives information about the available commands. 
+
 
 ```sh
-cargo run pgs --schema examples/simple.pgs
+pgschemapc --help
+A simple prototype tool to process and validate PG-Schemas with property constraints
+
+Usage: pgschemapc [COMMAND]
+
+Commands:
+  pgs       Process and validate property graph schemas
+  pg        Process and validate property graphs
+  map       Process and validate type map associations
+  validate  
+  help      Print this message or the help of the given subcommand(s)
+
+Options:
+  -h, --help
+          Print help (see a summary with '-h')
+
+  -V, --version
+          Print version
+```
+## Running a simple validation
+
+The following command shows how the tool can be used to validate a simple property graph with a PG-Schema_PC schema according to some type maps:
+
+```sh
+pgschemapc validate --graph examples/simple.pg --schema examples/simple.pgs --map examples/simple.map
 ```
 
 ## Running the tests

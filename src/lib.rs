@@ -16,5 +16,6 @@ pub mod record;
 pub mod record_type;
 pub mod type_map;
 pub mod type_name;
+pub mod validation_result;
 pub mod value;
 pub mod value_type;
