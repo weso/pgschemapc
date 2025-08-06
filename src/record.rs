@@ -1,8 +1,10 @@
 use crate::key::Key;
 use crate::value::Value;
+use itertools::Itertools;
 use std::collections::HashMap;
 use std::collections::HashSet as Set;
 use std::fmt::Display;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Record {
     map: HashMap<Key, Set<Value>>,
@@ -87,18 +89,33 @@ impl Display for Record {
         if self.map.is_empty() {
             return write!(f, "{{}}");
         }
-        write!(f, "{{")?;
-        for (key, values) in &self.map {
-            let formatted_values = values
-                .iter()
-                .map(|v| format!("{}", v))
-                .collect::<Vec<_>>()
-                .join(", ");
-            write!(f, "{}: [{}], ", key, formatted_values)?;
-        }
-        write!(f, "}}")?;
+        let entries: Vec<String> = self
+            .map
+            .iter()
+            .sorted_by_key(|(k, _)| *k)
+            .map(|(k, v)| format!("{}: {}", k, show_values(v)))
+            .collect();
+        write!(f, "{{{}}}", entries.join(", "))?;
         Ok(())
     }
+}
+
+fn show_values(values: &Set<Value>) -> String {
+    if values.is_empty() {
+        return "[]".to_string();
+    }
+    if values.len() == 1 {
+        return values.iter().next().unwrap().to_string();
+    }
+    let sorted_values: Vec<&Value> = values.iter().sorted().collect();
+    format!(
+        "[{}]",
+        sorted_values
+            .iter()
+            .map(|v| v.to_string())
+            .collect::<Vec<_>>()
+            .join(", ")
+    )
 }
 
 #[cfg(test)]

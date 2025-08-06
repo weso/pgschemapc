@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use crate::pgs_error::PgsError;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Ord)]
 pub enum Value {
     String(String),
     Integer(i32),
@@ -96,6 +96,17 @@ impl Display for Value {
             Value::String(s) => write!(f, "{}", s),
             Value::Integer(i) => write!(f, "{}", i),
             Value::Date(d) => write!(f, "{}", d),
+        }
+    }
+}
+
+impl PartialOrd for Value {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        match (self, other) {
+            (Value::Integer(i1), Value::Integer(i2)) => i1.partial_cmp(i2),
+            (Value::String(s1), Value::String(s2)) => s1.partial_cmp(s2),
+            (Value::Date(d1), Value::Date(d2)) => d1.partial_cmp(d2),
+            _ => None,
         }
     }
 }

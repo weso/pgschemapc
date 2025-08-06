@@ -65,22 +65,32 @@ impl FormalBaseType {
         if self.labels != *labels {
             // TODO: Check openness of labels
             return Either::Left::<Vec<PgsError>, Vec<Evidence>>(vec![PgsError::LabelsDifferent {
-                record_labels: format!("{:?}", labels),
-                type_labels: format!("{:?}", self.labels),
+                record_labels: format!("{}", labels.iter().cloned().collect::<Vec<_>>().join(", ")),
+                type_labels: format!(
+                    "{}",
+                    self.labels.iter().cloned().collect::<Vec<_>>().join(", ")
+                ),
             }]);
         }
         for record_type in &self.content {
             if record_type.conforms(content).is_right() {
                 return Either::Right(vec![Evidence::LabelsContentConforms {
-                    labels: format!("{:?}", labels),
-                    record: format!("{:?}", content),
-                    type_content: format!("{:?}", record_type),
+                    labels: format!("{}", labels.iter().cloned().collect::<Vec<_>>().join(", ")),
+                    record: format!("{}", content),
+                    type_content: format!("{}", record_type),
                 }]);
             };
         }
         Either::Left(vec![PgsError::RecordContentFails {
-            record: format!("{:?}", content),
-            type_content: format!("{:?}", self.content),
+            record: format!("{}", content),
+            type_content: format!(
+                "{}",
+                self.content
+                    .iter()
+                    .map(|rt| rt.to_string())
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            ),
         }])
     }
 

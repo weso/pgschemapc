@@ -53,7 +53,7 @@ impl Display for ResultAssociation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{}:{}: {}, details: {})",
+            "{}:{}: {}\n Details: {})",
             self.node_id,
             self.type_name,
             self.conforms,
@@ -68,11 +68,11 @@ fn show_details(details: &Either<Vec<PgsError>, Vec<Evidence>>) -> String {
             .iter()
             .map(|e| e.to_string())
             .collect::<Vec<_>>()
-            .join(", "),
+            .join("\n   "),
         Either::Right(evidences) => evidences
             .iter()
             .map(|e| e.to_string())
             .collect::<Vec<_>>()
-            .join(", "),
+            .join("\n   "),
     }
 }

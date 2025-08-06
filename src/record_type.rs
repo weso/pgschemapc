@@ -6,9 +6,9 @@ use crate::key::Key;
 use crate::pgs_error::PgsError;
 use crate::record::Record;
 use crate::value_type::ValueType;
+use itertools::Itertools;
 use std::collections::{BTreeMap, HashSet};
 use std::fmt::Display;
-// use std::hash::{Hash, Hasher};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RecordType {
@@ -136,12 +136,12 @@ impl RecordType {
 
 impl Display for RecordType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut entries: Vec<String> = self
+        let entries: Vec<String> = self
             .map
             .iter()
+            .sorted_by_key(|(k, _)| *k)
             .map(|(k, v)| format!("{}: {}", k, v))
             .collect();
-        entries.sort();
         write!(f, "{{{}}}", entries.join(", "))
     }
 }

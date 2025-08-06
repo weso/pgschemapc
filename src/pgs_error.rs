@@ -44,7 +44,7 @@ pub enum PgsError {
     },
 
     #[error(
-        "Record content does not conform to type content: record {record}, type content {type_content}"
+        "Record does not conform to type content:\n Record:\n{record}\n Types:\n{type_content}"
     )]
     RecordContentFails {
         record: String,
