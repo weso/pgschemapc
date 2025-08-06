@@ -12,17 +12,20 @@ PG-Schema_PC is a formal extension of the PG-Schema language, designed to suppor
 It introduces structural, cardinality, and range constraints that enhance the precision and expressiveness of schema definitions. 
 This implementation serves as a reference interpreter for the abstract grammar and semantics presented in the associated publication.
 
-## Building and installation
 
-The code has been implemented in Rust and it can be run using [cargo](https://doc.rust-lang.org/cargo/).
+## Installation and building
 
-The following command compiles and generates an executable called `pgschemapc` in the `target/release` folder:
+Binary releases in Windows, Mac and Linux are published in [relases](https://github.com/weso/pgschemapc/releases).
+
+If you prefer to build the code, you should install [cargo](https://doc.rust-lang.org/cargo/) and the following command compiles and generates an executable called `pgschemapc` in the `target/release` folder:
 
 ```sh
 cargo build --release
 ```
 
-Once it has been created, you can add it to your executable path or run `target/release/pgschemapc` (we will simpligy it as just `pgschemapc`).
+which will create a binary in `target/release/pgschemapc`.
+
+Once you have the `pgschemapc` binary, you can add it to your executable path. 
 
 The command `pgschemapc --help` gives information about the available commands. 
 
