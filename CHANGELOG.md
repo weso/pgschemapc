@@ -1,5 +1,8 @@
 # CHANGELOG
 
+# v0.1.3 - not released yet
+- Improved visualization of errors
+
 # v0.1.2
 
 - Added property graphs and association maps to the examples from the paper
