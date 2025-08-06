@@ -1,4 +1,5 @@
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.16744091.svg)](https://doi.org/10.5281/zenodo.16744091)
+[![CI](https://github.com/weso/pgschemapc/actions/workflows/ci.yml/badge.svg)](https://github.com/weso/pgschemapc/actions/workflows/ci.yml)
 
 # PG-Schema_PC
 
