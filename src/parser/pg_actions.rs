@@ -137,9 +137,9 @@ pub fn values_single_value(_ctx: &Ctx, single_value: SingleValue) -> Values {
 pub fn values_list_value(_ctx: &Ctx, list_values: ListValues) -> Values {
     Values::ListValue(list_values)
 }
-pub type ListValues = SingleValue1;
-pub fn list_values_single_value1(_ctx: &Ctx, single_value1: SingleValue1) -> ListValues {
-    single_value1
+pub type ListValues = SingleValue0;
+pub fn list_values_single_value0(_ctx: &Ctx, single_value0: SingleValue0) -> ListValues {
+    single_value0
 }
 pub type SingleValue1 = Vec<SingleValue>;
 pub fn single_value1_c1(
@@ -155,6 +155,16 @@ pub fn single_value1_single_value(
     single_value: SingleValue,
 ) -> SingleValue1 {
     vec![single_value]
+}
+pub type SingleValue0 = Option<SingleValue1>;
+pub fn single_value0_single_value1(
+    _ctx: &Ctx,
+    single_value1: SingleValue1,
+) -> SingleValue0 {
+    Some(single_value1)
+}
+pub fn single_value0_empty(_ctx: &Ctx) -> SingleValue0 {
+    None
 }
 #[derive(Debug, Clone)]
 pub enum SingleValue {

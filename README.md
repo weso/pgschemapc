@@ -25,7 +25,6 @@ Once it has been created, you can add it to your executable path or run `target/
 
 The command `pgschemapc --help` gives information about the available commands. 
 
-
 ```sh
 pgschemapc --help
 A simple prototype tool to process and validate PG-Schemas with property constraints
@@ -36,7 +35,7 @@ Commands:
   pgs       Process and validate property graph schemas
   pg        Process and validate property graphs
   map       Process and validate type map associations
-  validate  
+  validate  Validate a property graph with a property graph schema and some associated type map
   help      Print this message or the help of the given subcommand(s)
 
 Options:
@@ -46,6 +45,7 @@ Options:
   -V, --version
           Print version
 ```
+
 ## Running a simple validation
 
 The following command shows how the tool can be used to validate a simple property graph with a PG-Schema_PC schema according to some type maps:
@@ -54,15 +54,25 @@ The following command shows how the tool can be used to validate a simple proper
 pgschemapc validate --graph examples/simple.pg --schema examples/simple.pgs --map examples/simple.map
 ```
 
+## Running examples from paper
+
+The different examples from the submitted paper can be run using the following commands: 
+
+```sh
+pgschemapc validate --graph examples/[EXAMPLE_NAME].pg --schema examples/[EXAMPLE_NAME].pgs --map examples/[EXAMPLE_NAME].map
+```
+
+where `[EXAMPLE_NAME]` can be any of `simple`, `course`, `person`, `product`, `user`, etc. 
+
+Of course, you can play with the tool by creating your own property graph, property graph schema and association maps.
+
 ## Running the tests
 
-To run a test suite or validate your own PG-Schema definitions, use the provided command:
+To run a test suite use the command:
 
 ```sh
 cargo test
 ```
-
-The tests contain the examples in the paper as well as other test-cases.
 
 At this stage, the tool is a prototype for PGSchema with property constraints validation. 
 Further integration with graph databases or external datasets will require extending the parsing and validation layers.

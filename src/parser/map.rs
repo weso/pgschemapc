@@ -18,15 +18,20 @@ use rustemo::debug::{log, logn};
 #[cfg(debug_assertions)]
 use rustemo::colored::*;
 pub type Input = str;
-const STATE_COUNT: usize = 11usize;
-const MAX_RECOGNIZERS: usize = 2usize;
+const STATE_COUNT: usize = 30usize;
+const MAX_RECOGNIZERS: usize = 6usize;
 #[allow(dead_code)]
-const TERMINAL_COUNT: usize = 7usize;
+const TERMINAL_COUNT: usize = 12usize;
 #[allow(clippy::upper_case_acronyms)]
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum TokenKind {
     #[default]
     STOP,
+    WS,
+    CommentLine,
+    NotComment,
+    START_COMMENT,
+    END_COMMENT,
     IDENTIFIER,
     AT,
     COMMA,
@@ -49,6 +54,23 @@ pub enum ProdKind {
     AssociationP1,
     NodeIdP1,
     TypeNameP1,
+    LayoutP1,
+    LayoutItem1P1,
+    LayoutItem1P2,
+    LayoutItem0P1,
+    LayoutItem0P2,
+    LayoutItemP1,
+    LayoutItemP2,
+    CommentP1,
+    CommentP2,
+    CorncsP1,
+    Cornc1P1,
+    Cornc1P2,
+    Cornc0P1,
+    Cornc0P2,
+    CorncP1,
+    CorncP2,
+    CorncP3,
 }
 use ProdKind as PK;
 impl std::fmt::Debug for ProdKind {
@@ -60,6 +82,23 @@ impl std::fmt::Debug for ProdKind {
             ProdKind::AssociationP1 => "Association: NodeId SEMICOLON TypeName",
             ProdKind::NodeIdP1 => "NodeId: IDENTIFIER",
             ProdKind::TypeNameP1 => "TypeName: IDENTIFIER",
+            ProdKind::LayoutP1 => "Layout: LayoutItem0",
+            ProdKind::LayoutItem1P1 => "LayoutItem1: LayoutItem1 LayoutItem",
+            ProdKind::LayoutItem1P2 => "LayoutItem1: LayoutItem",
+            ProdKind::LayoutItem0P1 => "LayoutItem0: LayoutItem1",
+            ProdKind::LayoutItem0P2 => "LayoutItem0: ",
+            ProdKind::LayoutItemP1 => "LayoutItem: WS",
+            ProdKind::LayoutItemP2 => "LayoutItem: Comment",
+            ProdKind::CommentP1 => "Comment: START_COMMENT Corncs END_COMMENT",
+            ProdKind::CommentP2 => "Comment: CommentLine",
+            ProdKind::CorncsP1 => "Corncs: Cornc0",
+            ProdKind::Cornc1P1 => "Cornc1: Cornc1 Cornc",
+            ProdKind::Cornc1P2 => "Cornc1: Cornc",
+            ProdKind::Cornc0P1 => "Cornc0: Cornc1",
+            ProdKind::Cornc0P2 => "Cornc0: ",
+            ProdKind::CorncP1 => "Cornc: Comment",
+            ProdKind::CorncP2 => "Cornc: NotComment",
+            ProdKind::CorncP3 => "Cornc: WS",
         };
         write!(f, "{name}")
     }
@@ -70,11 +109,21 @@ impl std::fmt::Debug for ProdKind {
 pub enum NonTermKind {
     EMPTY,
     AUG,
+    AUGL,
     Map,
     Association1,
     Association,
     NodeId,
     TypeName,
+    Layout,
+    LayoutItem1,
+    LayoutItem0,
+    LayoutItem,
+    Comment,
+    Corncs,
+    Cornc1,
+    Cornc0,
+    Cornc,
 }
 impl From<ProdKind> for NonTermKind {
     fn from(prod: ProdKind) -> Self {
@@ -85,6 +134,23 @@ impl From<ProdKind> for NonTermKind {
             ProdKind::AssociationP1 => NonTermKind::Association,
             ProdKind::NodeIdP1 => NonTermKind::NodeId,
             ProdKind::TypeNameP1 => NonTermKind::TypeName,
+            ProdKind::LayoutP1 => NonTermKind::Layout,
+            ProdKind::LayoutItem1P1 => NonTermKind::LayoutItem1,
+            ProdKind::LayoutItem1P2 => NonTermKind::LayoutItem1,
+            ProdKind::LayoutItem0P1 => NonTermKind::LayoutItem0,
+            ProdKind::LayoutItem0P2 => NonTermKind::LayoutItem0,
+            ProdKind::LayoutItemP1 => NonTermKind::LayoutItem,
+            ProdKind::LayoutItemP2 => NonTermKind::LayoutItem,
+            ProdKind::CommentP1 => NonTermKind::Comment,
+            ProdKind::CommentP2 => NonTermKind::Comment,
+            ProdKind::CorncsP1 => NonTermKind::Corncs,
+            ProdKind::Cornc1P1 => NonTermKind::Cornc1,
+            ProdKind::Cornc1P2 => NonTermKind::Cornc1,
+            ProdKind::Cornc0P1 => NonTermKind::Cornc0,
+            ProdKind::Cornc0P2 => NonTermKind::Cornc0,
+            ProdKind::CorncP1 => NonTermKind::Cornc,
+            ProdKind::CorncP2 => NonTermKind::Cornc,
+            ProdKind::CorncP3 => NonTermKind::Cornc,
         }
     }
 }
@@ -103,10 +169,29 @@ pub enum State {
     AssociationS8,
     IDENTIFIERS9,
     TypeNameS10,
+    AUGLS11,
+    WSS12,
+    CommentLineS13,
+    START_COMMENTS14,
+    LayoutS15,
+    LayoutItem1S16,
+    LayoutItem0S17,
+    LayoutItemS18,
+    CommentS19,
+    WSS20,
+    NotCommentS21,
+    CommentS22,
+    CorncsS23,
+    Cornc1S24,
+    Cornc0S25,
+    CorncS26,
+    LayoutItemS27,
+    END_COMMENTS28,
+    CorncS29,
 }
 impl StateT for State {
     fn default_layout() -> Option<Self> {
-        None
+        Some(State::AUGLS11)
     }
 }
 impl From<State> for usize {
@@ -128,6 +213,25 @@ impl std::fmt::Debug for State {
             State::AssociationS8 => "8:Association",
             State::IDENTIFIERS9 => "9:IDENTIFIER",
             State::TypeNameS10 => "10:TypeName",
+            State::AUGLS11 => "11:AUGL",
+            State::WSS12 => "12:WS",
+            State::CommentLineS13 => "13:CommentLine",
+            State::START_COMMENTS14 => "14:START_COMMENT",
+            State::LayoutS15 => "15:Layout",
+            State::LayoutItem1S16 => "16:LayoutItem1",
+            State::LayoutItem0S17 => "17:LayoutItem0",
+            State::LayoutItemS18 => "18:LayoutItem",
+            State::CommentS19 => "19:Comment",
+            State::WSS20 => "20:WS",
+            State::NotCommentS21 => "21:NotComment",
+            State::CommentS22 => "22:Comment",
+            State::CorncsS23 => "23:Corncs",
+            State::Cornc1S24 => "24:Cornc1",
+            State::Cornc0S25 => "25:Cornc0",
+            State::CorncS26 => "26:Cornc",
+            State::LayoutItemS27 => "27:LayoutItem",
+            State::END_COMMENTS28 => "28:END_COMMENT",
+            State::CorncS29 => "29:Cornc",
         };
         write!(f, "{name}")
     }
@@ -229,6 +333,176 @@ fn action_typename_s10(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
         _ => vec![],
     }
 }
+fn action_augl_s11(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::STOP => Vec::from(&[Reduce(PK::LayoutItem0P2, 0usize)]),
+        TK::WS => Vec::from(&[Shift(State::WSS12)]),
+        TK::CommentLine => Vec::from(&[Shift(State::CommentLineS13)]),
+        TK::START_COMMENT => Vec::from(&[Shift(State::START_COMMENTS14)]),
+        _ => vec![],
+    }
+}
+fn action_ws_s12(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::STOP => Vec::from(&[Reduce(PK::LayoutItemP1, 1usize)]),
+        TK::WS => Vec::from(&[Reduce(PK::LayoutItemP1, 1usize)]),
+        TK::CommentLine => Vec::from(&[Reduce(PK::LayoutItemP1, 1usize)]),
+        TK::START_COMMENT => Vec::from(&[Reduce(PK::LayoutItemP1, 1usize)]),
+        _ => vec![],
+    }
+}
+fn action_commentline_s13(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::STOP => Vec::from(&[Reduce(PK::CommentP2, 1usize)]),
+        TK::WS => Vec::from(&[Reduce(PK::CommentP2, 1usize)]),
+        TK::CommentLine => Vec::from(&[Reduce(PK::CommentP2, 1usize)]),
+        TK::NotComment => Vec::from(&[Reduce(PK::CommentP2, 1usize)]),
+        TK::START_COMMENT => Vec::from(&[Reduce(PK::CommentP2, 1usize)]),
+        TK::END_COMMENT => Vec::from(&[Reduce(PK::CommentP2, 1usize)]),
+        _ => vec![],
+    }
+}
+fn action_start_comment_s14(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::WS => Vec::from(&[Shift(State::WSS20)]),
+        TK::CommentLine => Vec::from(&[Shift(State::CommentLineS13)]),
+        TK::NotComment => Vec::from(&[Shift(State::NotCommentS21)]),
+        TK::START_COMMENT => Vec::from(&[Shift(State::START_COMMENTS14)]),
+        TK::END_COMMENT => Vec::from(&[Reduce(PK::Cornc0P2, 0usize)]),
+        _ => vec![],
+    }
+}
+fn action_layout_s15(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::STOP => Vec::from(&[Accept]),
+        _ => vec![],
+    }
+}
+fn action_layoutitem1_s16(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::STOP => Vec::from(&[Reduce(PK::LayoutItem0P1, 1usize)]),
+        TK::WS => Vec::from(&[Shift(State::WSS12)]),
+        TK::CommentLine => Vec::from(&[Shift(State::CommentLineS13)]),
+        TK::START_COMMENT => Vec::from(&[Shift(State::START_COMMENTS14)]),
+        _ => vec![],
+    }
+}
+fn action_layoutitem0_s17(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::STOP => Vec::from(&[Reduce(PK::LayoutP1, 1usize)]),
+        _ => vec![],
+    }
+}
+fn action_layoutitem_s18(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::STOP => Vec::from(&[Reduce(PK::LayoutItem1P2, 1usize)]),
+        TK::WS => Vec::from(&[Reduce(PK::LayoutItem1P2, 1usize)]),
+        TK::CommentLine => Vec::from(&[Reduce(PK::LayoutItem1P2, 1usize)]),
+        TK::START_COMMENT => Vec::from(&[Reduce(PK::LayoutItem1P2, 1usize)]),
+        _ => vec![],
+    }
+}
+fn action_comment_s19(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::STOP => Vec::from(&[Reduce(PK::LayoutItemP2, 1usize)]),
+        TK::WS => Vec::from(&[Reduce(PK::LayoutItemP2, 1usize)]),
+        TK::CommentLine => Vec::from(&[Reduce(PK::LayoutItemP2, 1usize)]),
+        TK::START_COMMENT => Vec::from(&[Reduce(PK::LayoutItemP2, 1usize)]),
+        _ => vec![],
+    }
+}
+fn action_ws_s20(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::WS => Vec::from(&[Reduce(PK::CorncP3, 1usize)]),
+        TK::CommentLine => Vec::from(&[Reduce(PK::CorncP3, 1usize)]),
+        TK::NotComment => Vec::from(&[Reduce(PK::CorncP3, 1usize)]),
+        TK::START_COMMENT => Vec::from(&[Reduce(PK::CorncP3, 1usize)]),
+        TK::END_COMMENT => Vec::from(&[Reduce(PK::CorncP3, 1usize)]),
+        _ => vec![],
+    }
+}
+fn action_notcomment_s21(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::WS => Vec::from(&[Reduce(PK::CorncP2, 1usize)]),
+        TK::CommentLine => Vec::from(&[Reduce(PK::CorncP2, 1usize)]),
+        TK::NotComment => Vec::from(&[Reduce(PK::CorncP2, 1usize)]),
+        TK::START_COMMENT => Vec::from(&[Reduce(PK::CorncP2, 1usize)]),
+        TK::END_COMMENT => Vec::from(&[Reduce(PK::CorncP2, 1usize)]),
+        _ => vec![],
+    }
+}
+fn action_comment_s22(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::WS => Vec::from(&[Reduce(PK::CorncP1, 1usize)]),
+        TK::CommentLine => Vec::from(&[Reduce(PK::CorncP1, 1usize)]),
+        TK::NotComment => Vec::from(&[Reduce(PK::CorncP1, 1usize)]),
+        TK::START_COMMENT => Vec::from(&[Reduce(PK::CorncP1, 1usize)]),
+        TK::END_COMMENT => Vec::from(&[Reduce(PK::CorncP1, 1usize)]),
+        _ => vec![],
+    }
+}
+fn action_corncs_s23(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::END_COMMENT => Vec::from(&[Shift(State::END_COMMENTS28)]),
+        _ => vec![],
+    }
+}
+fn action_cornc1_s24(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::WS => Vec::from(&[Shift(State::WSS20)]),
+        TK::CommentLine => Vec::from(&[Shift(State::CommentLineS13)]),
+        TK::NotComment => Vec::from(&[Shift(State::NotCommentS21)]),
+        TK::START_COMMENT => Vec::from(&[Shift(State::START_COMMENTS14)]),
+        TK::END_COMMENT => Vec::from(&[Reduce(PK::Cornc0P1, 1usize)]),
+        _ => vec![],
+    }
+}
+fn action_cornc0_s25(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::END_COMMENT => Vec::from(&[Reduce(PK::CorncsP1, 1usize)]),
+        _ => vec![],
+    }
+}
+fn action_cornc_s26(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::WS => Vec::from(&[Reduce(PK::Cornc1P2, 1usize)]),
+        TK::CommentLine => Vec::from(&[Reduce(PK::Cornc1P2, 1usize)]),
+        TK::NotComment => Vec::from(&[Reduce(PK::Cornc1P2, 1usize)]),
+        TK::START_COMMENT => Vec::from(&[Reduce(PK::Cornc1P2, 1usize)]),
+        TK::END_COMMENT => Vec::from(&[Reduce(PK::Cornc1P2, 1usize)]),
+        _ => vec![],
+    }
+}
+fn action_layoutitem_s27(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::STOP => Vec::from(&[Reduce(PK::LayoutItem1P1, 2usize)]),
+        TK::WS => Vec::from(&[Reduce(PK::LayoutItem1P1, 2usize)]),
+        TK::CommentLine => Vec::from(&[Reduce(PK::LayoutItem1P1, 2usize)]),
+        TK::START_COMMENT => Vec::from(&[Reduce(PK::LayoutItem1P1, 2usize)]),
+        _ => vec![],
+    }
+}
+fn action_end_comment_s28(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::STOP => Vec::from(&[Reduce(PK::CommentP1, 3usize)]),
+        TK::WS => Vec::from(&[Reduce(PK::CommentP1, 3usize)]),
+        TK::CommentLine => Vec::from(&[Reduce(PK::CommentP1, 3usize)]),
+        TK::NotComment => Vec::from(&[Reduce(PK::CommentP1, 3usize)]),
+        TK::START_COMMENT => Vec::from(&[Reduce(PK::CommentP1, 3usize)]),
+        TK::END_COMMENT => Vec::from(&[Reduce(PK::CommentP1, 3usize)]),
+        _ => vec![],
+    }
+}
+fn action_cornc_s29(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::WS => Vec::from(&[Reduce(PK::Cornc1P1, 2usize)]),
+        TK::CommentLine => Vec::from(&[Reduce(PK::Cornc1P1, 2usize)]),
+        TK::NotComment => Vec::from(&[Reduce(PK::Cornc1P1, 2usize)]),
+        TK::START_COMMENT => Vec::from(&[Reduce(PK::Cornc1P1, 2usize)]),
+        TK::END_COMMENT => Vec::from(&[Reduce(PK::Cornc1P1, 2usize)]),
+        _ => vec![],
+    }
+}
 fn goto_aug_s0(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
         NonTermKind::Map => State::MapS2,
@@ -266,6 +540,60 @@ fn goto_semicolon_s7(nonterm_kind: NonTermKind) -> State {
         }
     }
 }
+fn goto_augl_s11(nonterm_kind: NonTermKind) -> State {
+    match nonterm_kind {
+        NonTermKind::Layout => State::LayoutS15,
+        NonTermKind::LayoutItem1 => State::LayoutItem1S16,
+        NonTermKind::LayoutItem0 => State::LayoutItem0S17,
+        NonTermKind::LayoutItem => State::LayoutItemS18,
+        NonTermKind::Comment => State::CommentS19,
+        _ => {
+            panic!(
+                "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
+                State::AUGLS11
+            )
+        }
+    }
+}
+fn goto_start_comment_s14(nonterm_kind: NonTermKind) -> State {
+    match nonterm_kind {
+        NonTermKind::Comment => State::CommentS22,
+        NonTermKind::Corncs => State::CorncsS23,
+        NonTermKind::Cornc1 => State::Cornc1S24,
+        NonTermKind::Cornc0 => State::Cornc0S25,
+        NonTermKind::Cornc => State::CorncS26,
+        _ => {
+            panic!(
+                "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
+                State::START_COMMENTS14
+            )
+        }
+    }
+}
+fn goto_layoutitem1_s16(nonterm_kind: NonTermKind) -> State {
+    match nonterm_kind {
+        NonTermKind::LayoutItem => State::LayoutItemS27,
+        NonTermKind::Comment => State::CommentS19,
+        _ => {
+            panic!(
+                "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
+                State::LayoutItem1S16
+            )
+        }
+    }
+}
+fn goto_cornc1_s24(nonterm_kind: NonTermKind) -> State {
+    match nonterm_kind {
+        NonTermKind::Comment => State::CommentS22,
+        NonTermKind::Cornc => State::CorncS29,
+        _ => {
+            panic!(
+                "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
+                State::Cornc1S24
+            )
+        }
+    }
+}
 fn goto_invalid(_nonterm_kind: NonTermKind) -> State {
     panic!("Invalid GOTO entry!");
 }
@@ -282,6 +610,25 @@ pub(crate) static PARSER_DEFINITION: MapParserDefinition = MapParserDefinition {
         action_association_s8,
         action_identifier_s9,
         action_typename_s10,
+        action_augl_s11,
+        action_ws_s12,
+        action_commentline_s13,
+        action_start_comment_s14,
+        action_layout_s15,
+        action_layoutitem1_s16,
+        action_layoutitem0_s17,
+        action_layoutitem_s18,
+        action_comment_s19,
+        action_ws_s20,
+        action_notcomment_s21,
+        action_comment_s22,
+        action_corncs_s23,
+        action_cornc1_s24,
+        action_cornc0_s25,
+        action_cornc_s26,
+        action_layoutitem_s27,
+        action_end_comment_s28,
+        action_cornc_s29,
     ],
     gotos: [
         goto_aug_s0,
@@ -295,19 +642,162 @@ pub(crate) static PARSER_DEFINITION: MapParserDefinition = MapParserDefinition {
         goto_invalid,
         goto_invalid,
         goto_invalid,
+        goto_augl_s11,
+        goto_invalid,
+        goto_invalid,
+        goto_start_comment_s14,
+        goto_invalid,
+        goto_layoutitem1_s16,
+        goto_invalid,
+        goto_invalid,
+        goto_invalid,
+        goto_invalid,
+        goto_invalid,
+        goto_invalid,
+        goto_invalid,
+        goto_cornc1_s24,
+        goto_invalid,
+        goto_invalid,
+        goto_invalid,
+        goto_invalid,
+        goto_invalid,
     ],
     token_kinds: [
-        [Some((TK::IDENTIFIER, false)), None],
-        [Some((TK::SEMICOLON, true)), None],
-        [Some((TK::STOP, false)), None],
-        [Some((TK::STOP, true)), Some((TK::COMMA, true))],
-        [Some((TK::STOP, true)), Some((TK::COMMA, true))],
-        [Some((TK::SEMICOLON, true)), None],
-        [Some((TK::IDENTIFIER, false)), None],
-        [Some((TK::IDENTIFIER, false)), None],
-        [Some((TK::STOP, true)), Some((TK::COMMA, true))],
-        [Some((TK::STOP, true)), Some((TK::COMMA, true))],
-        [Some((TK::STOP, true)), Some((TK::COMMA, true))],
+        [Some((TK::IDENTIFIER, false)), None, None, None, None, None],
+        [Some((TK::SEMICOLON, true)), None, None, None, None, None],
+        [Some((TK::STOP, false)), None, None, None, None, None],
+        [Some((TK::STOP, true)), Some((TK::COMMA, true)), None, None, None, None],
+        [Some((TK::STOP, true)), Some((TK::COMMA, true)), None, None, None, None],
+        [Some((TK::SEMICOLON, true)), None, None, None, None, None],
+        [Some((TK::IDENTIFIER, false)), None, None, None, None, None],
+        [Some((TK::IDENTIFIER, false)), None, None, None, None, None],
+        [Some((TK::STOP, true)), Some((TK::COMMA, true)), None, None, None, None],
+        [Some((TK::STOP, true)), Some((TK::COMMA, true)), None, None, None, None],
+        [Some((TK::STOP, true)), Some((TK::COMMA, true)), None, None, None, None],
+        [
+            Some((TK::STOP, true)),
+            Some((TK::START_COMMENT, true)),
+            Some((TK::WS, false)),
+            Some((TK::CommentLine, false)),
+            None,
+            None,
+        ],
+        [
+            Some((TK::STOP, true)),
+            Some((TK::START_COMMENT, true)),
+            Some((TK::WS, false)),
+            Some((TK::CommentLine, false)),
+            None,
+            None,
+        ],
+        [
+            Some((TK::STOP, true)),
+            Some((TK::START_COMMENT, true)),
+            Some((TK::END_COMMENT, true)),
+            Some((TK::WS, false)),
+            Some((TK::CommentLine, false)),
+            Some((TK::NotComment, false)),
+        ],
+        [
+            Some((TK::START_COMMENT, true)),
+            Some((TK::END_COMMENT, true)),
+            Some((TK::WS, false)),
+            Some((TK::CommentLine, false)),
+            Some((TK::NotComment, false)),
+            None,
+        ],
+        [Some((TK::STOP, false)), None, None, None, None, None],
+        [
+            Some((TK::STOP, true)),
+            Some((TK::START_COMMENT, true)),
+            Some((TK::WS, false)),
+            Some((TK::CommentLine, false)),
+            None,
+            None,
+        ],
+        [Some((TK::STOP, false)), None, None, None, None, None],
+        [
+            Some((TK::STOP, true)),
+            Some((TK::START_COMMENT, true)),
+            Some((TK::WS, false)),
+            Some((TK::CommentLine, false)),
+            None,
+            None,
+        ],
+        [
+            Some((TK::STOP, true)),
+            Some((TK::START_COMMENT, true)),
+            Some((TK::WS, false)),
+            Some((TK::CommentLine, false)),
+            None,
+            None,
+        ],
+        [
+            Some((TK::START_COMMENT, true)),
+            Some((TK::END_COMMENT, true)),
+            Some((TK::WS, false)),
+            Some((TK::CommentLine, false)),
+            Some((TK::NotComment, false)),
+            None,
+        ],
+        [
+            Some((TK::START_COMMENT, true)),
+            Some((TK::END_COMMENT, true)),
+            Some((TK::WS, false)),
+            Some((TK::CommentLine, false)),
+            Some((TK::NotComment, false)),
+            None,
+        ],
+        [
+            Some((TK::START_COMMENT, true)),
+            Some((TK::END_COMMENT, true)),
+            Some((TK::WS, false)),
+            Some((TK::CommentLine, false)),
+            Some((TK::NotComment, false)),
+            None,
+        ],
+        [Some((TK::END_COMMENT, true)), None, None, None, None, None],
+        [
+            Some((TK::START_COMMENT, true)),
+            Some((TK::END_COMMENT, true)),
+            Some((TK::WS, false)),
+            Some((TK::CommentLine, false)),
+            Some((TK::NotComment, false)),
+            None,
+        ],
+        [Some((TK::END_COMMENT, true)), None, None, None, None, None],
+        [
+            Some((TK::START_COMMENT, true)),
+            Some((TK::END_COMMENT, true)),
+            Some((TK::WS, false)),
+            Some((TK::CommentLine, false)),
+            Some((TK::NotComment, false)),
+            None,
+        ],
+        [
+            Some((TK::STOP, true)),
+            Some((TK::START_COMMENT, true)),
+            Some((TK::WS, false)),
+            Some((TK::CommentLine, false)),
+            None,
+            None,
+        ],
+        [
+            Some((TK::STOP, true)),
+            Some((TK::START_COMMENT, true)),
+            Some((TK::END_COMMENT, true)),
+            Some((TK::WS, false)),
+            Some((TK::CommentLine, false)),
+            Some((TK::NotComment, false)),
+        ],
+        [
+            Some((TK::START_COMMENT, true)),
+            Some((TK::END_COMMENT, true)),
+            Some((TK::WS, false)),
+            Some((TK::CommentLine, false)),
+            Some((TK::NotComment, false)),
+            None,
+        ],
     ],
 };
 impl ParserDefinition<State, ProdKind, TokenKind, NonTermKind> for MapParserDefinition {
@@ -362,8 +852,8 @@ impl<
                 &PARSER_DEFINITION,
                 State::default(),
                 false,
-                false,
-                StringLexer::new(true, &RECOGNIZERS),
+                true,
+                StringLexer::new(false, &RECOGNIZERS),
                 DefaultBuilder::new(),
             ),
         )
@@ -453,6 +943,28 @@ impl<'i> TokenRecognizerT<'i> for TokenRecognizer {
 }
 pub(crate) static RECOGNIZERS: [TokenRecognizer; TERMINAL_COUNT] = [
     TokenRecognizer(TokenKind::STOP, Recognizer::Stop),
+    TokenRecognizer(
+        TokenKind::WS,
+        Recognizer::RegexMatch(
+            Lazy::new(|| { Regex::new(concat!("^", "\\s+")).unwrap() }),
+        ),
+    ),
+    TokenRecognizer(
+        TokenKind::CommentLine,
+        Recognizer::RegexMatch(
+            Lazy::new(|| { Regex::new(concat!("^", "//.*")).unwrap() }),
+        ),
+    ),
+    TokenRecognizer(
+        TokenKind::NotComment,
+        Recognizer::RegexMatch(
+            Lazy::new(|| {
+                Regex::new(concat!("^", "((\\*[^/])|[^\\s*/]|/[^\\*])+")).unwrap()
+            }),
+        ),
+    ),
+    TokenRecognizer(TokenKind::START_COMMENT, Recognizer::StrMatch("/*")),
+    TokenRecognizer(TokenKind::END_COMMENT, Recognizer::StrMatch("*/")),
     TokenRecognizer(
         TokenKind::IDENTIFIER,
         Recognizer::RegexMatch(
@@ -597,6 +1109,7 @@ for DefaultBuilder {
                     _ => panic!("Invalid symbol parse stack data."),
                 }
             }
+            _ => panic!("Reduce of unreachable nonterminal!"),
         };
         self.res_stack.push(Symbol::NonTerminal(prod));
     }

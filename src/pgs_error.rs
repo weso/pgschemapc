@@ -2,7 +2,7 @@ use thiserror::Error;
 
 use crate::{card::Card, key::Key, type_name::TypeName, value::Value};
 
-#[derive(Error, Debug, PartialEq)]
+#[derive(Error, Debug, PartialEq, Clone)]
 pub enum PgsError {
     #[error("Error parsing as number: {0}")]
     InvalidNumber(String),
@@ -50,4 +50,14 @@ pub enum PgsError {
         record: String,
         type_content: String,
     },
+
+    #[error("Type mismatch in operation {operation}: expected {expected}, found {found}")]
+    TypeMismatch {
+        operation: String,
+        expected: String,
+        found: String,
+    },
+
+    #[error("Condition ({condition}) for value: {value}")]
+    ConditionFailed { condition: String, value: String },
 }

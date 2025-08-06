@@ -99,12 +99,15 @@ fn get_values(values: Values) -> Result<HashSet<Value>, PgsError> {
             let value = get_value(value)?;
             result.insert(value);
         }
-        Values::ListValue(values) => {
-            for value in values {
-                let value = get_value(value)?;
-                result.insert(value);
+        Values::ListValue(values_opt) => match values_opt {
+            Some(values) => {
+                for value in values {
+                    let value = get_value(value)?;
+                    result.insert(value);
+                }
             }
-        }
+            None => {}
+        },
     }
     Ok(result)
 }

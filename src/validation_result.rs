@@ -19,6 +19,11 @@ impl ValidationResult {
     }
 
     pub fn add_association(&mut self, association: ResultAssociation) {
+        if association.conforms {
+            self.is_valid = self.is_valid && true;
+        } else {
+            self.is_valid = false;
+        }
         self.associations.push(association);
     }
 
@@ -37,19 +42,37 @@ pub struct ResultAssociation {
 
 impl Display for ValidationResult {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "ValidationResult(is_valid: {}, associations: {:?})",
-            self.is_valid, self.associations
-        )
+        write!(f, "Result - valid?: {}: ", self.is_valid)?;
+        for association in &self.associations {
+            write!(f, "\n{}", association)?;
+        }
+        Ok(())
     }
 }
 impl Display for ResultAssociation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "ResultAssociation(node_id: {}, type_name: {}, conforms: {}, details: {:?})",
-            self.node_id, self.type_name, self.conforms, self.details
+            "{}:{}: {}, details: {})",
+            self.node_id,
+            self.type_name,
+            self.conforms,
+            show_details(&self.details)
         )
+    }
+}
+
+fn show_details(details: &Either<Vec<PgsError>, Vec<Evidence>>) -> String {
+    match details {
+        Either::Left(errors) => errors
+            .iter()
+            .map(|e| e.to_string())
+            .collect::<Vec<_>>()
+            .join(", "),
+        Either::Right(evidences) => evidences
+            .iter()
+            .map(|e| e.to_string())
+            .collect::<Vec<_>>()
+            .join(", "),
     }
 }

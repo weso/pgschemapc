@@ -30,14 +30,28 @@ Values: SingleValue
       | OPENSQUAREBRACKET ListValues CLOSESQUAREBRACKET {ListValue}
       ;
 
-ListValues: SingleValue+[COMMA] ;
+ListValues: SingleValue*[COMMA] ;
 
 SingleValue:    
       QUOTED_STRING {StringValue}
     | NUMBER {NumberValue}
     ;
 
+// Productions for comments  
+Layout: LayoutItem*;
+LayoutItem: WS | Comment;
+Comment: '/*' Corncs '*/' | CommentLine;
+Corncs: Cornc*;
+Cornc: Comment | NotComment | WS;
+
 terminals
+
+// Terminals for comments
+WS: /\s+/;
+CommentLine: /\/\/.*/;
+NotComment: /((\*[^\/])|[^\s*\/]|\/[^\*])+/;
+START_COMMENT: '/*';
+END_COMMENT: '*/';
 
 QUOTED_STRING: /"((\\")|[^"])*"/ ;
 

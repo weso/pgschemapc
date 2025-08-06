@@ -8,6 +8,7 @@ use crate::{
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ValueType {
+    Any,
     StringType(Card),
     IntegerType(Card),
     DateType(Card),
@@ -66,9 +67,55 @@ impl ValueType {
                 }
                 check_all(values, |v| v.is_date(), "is_date")
             }
-            ValueType::Intersection(a, b) => todo!(), // a.conforms(values) && b.conforms(values),
-            ValueType::Union(a, b) => todo!(),        // a.conforms(values) || b.conforms(values),
-            ValueType::Cond(cond) => todo!(), // values.iter().all(|v| cond.check(v)), // Conditions are not checked here
+            ValueType::Intersection(a, b) => {
+                let a_evidence = a.conforms(values);
+                let b_evidence = b.conforms(values);
+                match (a_evidence, b_evidence) {
+                    (Either::Left(errs_a), Either::Left(errs_b)) => {
+                        Either::Left([errs_a, errs_b].concat())
+                    }
+                    (Either::Left(errs), Either::Right(_)) => Either::Left(errs),
+                    (Either::Right(_), Either::Left(errs)) => Either::Left(errs),
+                    (Either::Right(evidences_a), Either::Right(evidences_b)) => {
+                        Either::Right([evidences_a, evidences_b].concat())
+                    }
+                }
+            }
+            ValueType::Union(a, b) => {
+                let a_evidence = a.conforms(values);
+                let b_evidence = b.conforms(values);
+                match (a_evidence, b_evidence) {
+                    (Either::Left(errs_a), Either::Left(errs_b)) => {
+                        Either::Left([errs_a, errs_b].concat())
+                    }
+                    (Either::Left(_), Either::Right(es)) => Either::Right(es),
+                    (Either::Right(es), Either::Left(_)) => Either::Right(es),
+                    (Either::Right(evidences_a), Either::Right(evidences_b)) => {
+                        Either::Right([evidences_a, evidences_b].concat())
+                    }
+                }
+            }
+            ValueType::Cond(cond) => {
+                for value in values {
+                    match cond.check(value) {
+                        Ok(true) => continue,
+                        Ok(false) => {
+                            return Either::Left(vec![PgsError::ConditionFailed {
+                                condition: format!("{}", cond),
+                                value: format!("{}", value),
+                            }]);
+                        }
+                        Err(e) => return Either::Left(vec![e]),
+                    }
+                }
+                Either::Right(vec![Evidence::ConditionPassed {
+                    condition: format!("{}", cond),
+                    values: format!("{:?}", values),
+                }])
+            }
+            ValueType::Any => Either::Right(vec![Evidence::Any {
+                values: format!("{:?}", values),
+            }]),
         }
     }
 }
@@ -104,6 +151,7 @@ impl Display for ValueType {
             ValueType::Intersection(a, b) => write!(f, "({} ∩ {})", a, b),
             ValueType::Union(a, b) => write!(f, "({} ∪ {})", a, b),
             ValueType::Cond(expr) => write!(f, "Condition({})", expr),
+            ValueType::Any => write!(f, "ANY"),
         }
     }
 }

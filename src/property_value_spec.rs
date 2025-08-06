@@ -169,6 +169,30 @@ impl TypeSpec {
         }
     }
 
+    pub fn any() -> Self {
+        TypeSpec {
+            type_def: Type::Type(ValueType::Any),
+        }
+    }
+
+    pub fn cond(value_type: ValueType, cond: BooleanExpr) -> Self {
+        TypeSpec {
+            type_def: Type::Cond(value_type, cond),
+        }
+    }
+
+    pub fn intersection(a: TypeSpec, b: TypeSpec) -> Self {
+        TypeSpec {
+            type_def: Type::Conjunction(Box::new(a.type_def), Box::new(b.type_def)),
+        }
+    }
+
+    pub fn union(a: TypeSpec, b: TypeSpec) -> Self {
+        TypeSpec {
+            type_def: Type::Disjunction(Box::new(a.type_def), Box::new(b.type_def)),
+        }
+    }
+
     pub fn to_value_type(&self) -> ValueType {
         self.type_def.to_value_type()
     }

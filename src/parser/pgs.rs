@@ -18,15 +18,20 @@ use rustemo::debug::{log, logn};
 #[cfg(debug_assertions)]
 use rustemo::colored::*;
 pub type Input = str;
-const STATE_COUNT: usize = 87usize;
-const MAX_RECOGNIZERS: usize = 8usize;
+const STATE_COUNT: usize = 151usize;
+const MAX_RECOGNIZERS: usize = 10usize;
 #[allow(dead_code)]
-const TERMINAL_COUNT: usize = 27usize;
+const TERMINAL_COUNT: usize = 46usize;
 #[allow(clippy::upper_case_acronyms)]
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum TokenKind {
     #[default]
     STOP,
+    WS,
+    CommentLine,
+    NotComment,
+    START_COMMENT,
+    END_COMMENT,
     IDENTIFIER,
     SEMICOLON,
     CREATE,
@@ -49,10 +54,24 @@ pub enum TokenKind {
     INTEGER_NAME,
     STRING_NAME,
     DATE_NAME,
-    Number,
+    NUMBER,
     OPTIONAL,
     AMPERSAND,
     AT,
+    CHECK,
+    TRUE,
+    FALSE,
+    GT,
+    LT,
+    GE,
+    LE,
+    EQUALS,
+    QUOTED_STRING,
+    REGEX,
+    AND,
+    OR,
+    NOT,
+    ANY,
 }
 use TokenKind as TK;
 impl From<TokenKind> for usize {
@@ -98,19 +117,59 @@ pub enum ProdKind {
     OPTIONALOptP1,
     OPTIONALOptP2,
     PropertyP1,
-    CardOptP1,
-    CardOptP2,
     keyP1,
     TypeSpecP1,
-    SimpleTypeP1,
-    SimpleTypeP2,
-    SimpleTypeP3,
+    MoreTypesOptP1,
+    MoreTypesOptP2,
+    MoreTypesIntersectionType,
+    MoreTypesUnionType,
+    SimpleTypeStringSpec,
+    CardOptP1,
+    CardOptP2,
+    CheckOptP1,
+    CheckOptP2,
+    SimpleTypeInteger,
+    SimpleTypeDate,
+    SimpleTypeAny,
+    SimpleTypeCond,
+    CheckP1,
+    CondP1,
+    CondP2,
+    CondGT,
+    CondGE,
+    CondLT,
+    CondLE,
+    CondEQ,
+    CondRegex,
+    CondAnd,
+    CondOR,
+    CondNot,
+    CondParenCond,
     CardOptional,
     CardOneOrMore,
     CardZeroOrMore,
     CardRange,
     MaxP1,
     MaxStar,
+    LayoutP1,
+    LayoutItem1P1,
+    LayoutItem1P2,
+    LayoutItem0P1,
+    LayoutItem0P2,
+    LayoutItemP1,
+    LayoutItemP2,
+    CommentP1,
+    CommentP2,
+    CorncsP1,
+    Cornc1P1,
+    Cornc1P2,
+    Cornc0P1,
+    Cornc0P2,
+    CorncP1,
+    CorncP2,
+    CorncP3,
+    SingleValueStringValue,
+    SingleValueNumberValue,
 }
 use ProdKind as PK;
 impl std::fmt::Debug for ProdKind {
@@ -160,20 +219,62 @@ impl std::fmt::Debug for ProdKind {
             ProdKind::PropertiesBaseProperty => "Properties: OPTIONALOpt Property",
             ProdKind::OPTIONALOptP1 => "OPTIONALOpt: OPTIONAL",
             ProdKind::OPTIONALOptP2 => "OPTIONALOpt: ",
-            ProdKind::PropertyP1 => "Property: key COLON TypeSpec CardOpt",
+            ProdKind::PropertyP1 => "Property: key COLON TypeSpec",
+            ProdKind::keyP1 => "key: IDENTIFIER",
+            ProdKind::TypeSpecP1 => "TypeSpec: SimpleType MoreTypesOpt",
+            ProdKind::MoreTypesOptP1 => "MoreTypesOpt: MoreTypes",
+            ProdKind::MoreTypesOptP2 => "MoreTypesOpt: ",
+            ProdKind::MoreTypesIntersectionType => {
+                "MoreTypes: AMPERSAND SimpleType MoreTypesOpt"
+            }
+            ProdKind::MoreTypesUnionType => "MoreTypes: BAR SimpleType MoreTypesOpt",
+            ProdKind::SimpleTypeStringSpec => "SimpleType: STRING_NAME CardOpt CheckOpt",
             ProdKind::CardOptP1 => "CardOpt: Card",
             ProdKind::CardOptP2 => "CardOpt: ",
-            ProdKind::keyP1 => "key: IDENTIFIER",
-            ProdKind::TypeSpecP1 => "TypeSpec: SimpleType",
-            ProdKind::SimpleTypeP1 => "SimpleType: STRING_NAME",
-            ProdKind::SimpleTypeP2 => "SimpleType: INTEGER_NAME",
-            ProdKind::SimpleTypeP3 => "SimpleType: DATE_NAME",
+            ProdKind::CheckOptP1 => "CheckOpt: Check",
+            ProdKind::CheckOptP2 => "CheckOpt: ",
+            ProdKind::SimpleTypeInteger => "SimpleType: INTEGER_NAME CardOpt CheckOpt",
+            ProdKind::SimpleTypeDate => "SimpleType: DATE_NAME CardOpt CheckOpt",
+            ProdKind::SimpleTypeAny => "SimpleType: ANY CheckOpt",
+            ProdKind::SimpleTypeCond => "SimpleType: CHECK Cond",
+            ProdKind::CheckP1 => "Check: CHECK Cond",
+            ProdKind::CondP1 => "Cond: TRUE",
+            ProdKind::CondP2 => "Cond: FALSE",
+            ProdKind::CondGT => "Cond: GT SingleValue",
+            ProdKind::CondGE => "Cond: GE SingleValue",
+            ProdKind::CondLT => "Cond: LT SingleValue",
+            ProdKind::CondLE => "Cond: LE SingleValue",
+            ProdKind::CondEQ => "Cond: EQUALS SingleValue",
+            ProdKind::CondRegex => "Cond: REGEX QUOTED_STRING",
+            ProdKind::CondAnd => "Cond: Cond AND Cond",
+            ProdKind::CondOR => "Cond: Cond OR Cond",
+            ProdKind::CondNot => "Cond: NOT Cond",
+            ProdKind::CondParenCond => "Cond: OPEN_PAREN Cond CLOSE_PAREN",
             ProdKind::CardOptional => "Card: QUESTION",
             ProdKind::CardOneOrMore => "Card: PLUS",
             ProdKind::CardZeroOrMore => "Card: STAR",
-            ProdKind::CardRange => "Card: OPEN_CURLY Number COMMA Max CLOSE_CURLY",
-            ProdKind::MaxP1 => "Max: Number",
+            ProdKind::CardRange => "Card: OPEN_CURLY NUMBER COMMA Max CLOSE_CURLY",
+            ProdKind::MaxP1 => "Max: NUMBER",
             ProdKind::MaxStar => "Max: STAR",
+            ProdKind::LayoutP1 => "Layout: LayoutItem0",
+            ProdKind::LayoutItem1P1 => "LayoutItem1: LayoutItem1 LayoutItem",
+            ProdKind::LayoutItem1P2 => "LayoutItem1: LayoutItem",
+            ProdKind::LayoutItem0P1 => "LayoutItem0: LayoutItem1",
+            ProdKind::LayoutItem0P2 => "LayoutItem0: ",
+            ProdKind::LayoutItemP1 => "LayoutItem: WS",
+            ProdKind::LayoutItemP2 => "LayoutItem: Comment",
+            ProdKind::CommentP1 => "Comment: START_COMMENT Corncs END_COMMENT",
+            ProdKind::CommentP2 => "Comment: CommentLine",
+            ProdKind::CorncsP1 => "Corncs: Cornc0",
+            ProdKind::Cornc1P1 => "Cornc1: Cornc1 Cornc",
+            ProdKind::Cornc1P2 => "Cornc1: Cornc",
+            ProdKind::Cornc0P1 => "Cornc0: Cornc1",
+            ProdKind::Cornc0P2 => "Cornc0: ",
+            ProdKind::CorncP1 => "Cornc: Comment",
+            ProdKind::CorncP2 => "Cornc: NotComment",
+            ProdKind::CorncP3 => "Cornc: WS",
+            ProdKind::SingleValueStringValue => "SingleValue: QUOTED_STRING",
+            ProdKind::SingleValueNumberValue => "SingleValue: NUMBER",
         };
         write!(f, "{name}")
     }
@@ -184,6 +285,7 @@ impl std::fmt::Debug for ProdKind {
 pub enum NonTermKind {
     EMPTY,
     AUG,
+    AUGL,
     Pgs,
     CreateType1,
     CreateType,
@@ -207,12 +309,27 @@ pub enum NonTermKind {
     Properties,
     OPTIONALOpt,
     Property,
-    CardOpt,
     key,
     TypeSpec,
+    MoreTypesOpt,
+    MoreTypes,
     SimpleType,
+    CardOpt,
+    CheckOpt,
+    Check,
+    Cond,
     Card,
     Max,
+    Layout,
+    LayoutItem1,
+    LayoutItem0,
+    LayoutItem,
+    Comment,
+    Corncs,
+    Cornc1,
+    Cornc0,
+    Cornc,
+    SingleValue,
 }
 impl From<ProdKind> for NonTermKind {
     fn from(prod: ProdKind) -> Self {
@@ -252,19 +369,59 @@ impl From<ProdKind> for NonTermKind {
             ProdKind::OPTIONALOptP1 => NonTermKind::OPTIONALOpt,
             ProdKind::OPTIONALOptP2 => NonTermKind::OPTIONALOpt,
             ProdKind::PropertyP1 => NonTermKind::Property,
-            ProdKind::CardOptP1 => NonTermKind::CardOpt,
-            ProdKind::CardOptP2 => NonTermKind::CardOpt,
             ProdKind::keyP1 => NonTermKind::key,
             ProdKind::TypeSpecP1 => NonTermKind::TypeSpec,
-            ProdKind::SimpleTypeP1 => NonTermKind::SimpleType,
-            ProdKind::SimpleTypeP2 => NonTermKind::SimpleType,
-            ProdKind::SimpleTypeP3 => NonTermKind::SimpleType,
+            ProdKind::MoreTypesOptP1 => NonTermKind::MoreTypesOpt,
+            ProdKind::MoreTypesOptP2 => NonTermKind::MoreTypesOpt,
+            ProdKind::MoreTypesIntersectionType => NonTermKind::MoreTypes,
+            ProdKind::MoreTypesUnionType => NonTermKind::MoreTypes,
+            ProdKind::SimpleTypeStringSpec => NonTermKind::SimpleType,
+            ProdKind::CardOptP1 => NonTermKind::CardOpt,
+            ProdKind::CardOptP2 => NonTermKind::CardOpt,
+            ProdKind::CheckOptP1 => NonTermKind::CheckOpt,
+            ProdKind::CheckOptP2 => NonTermKind::CheckOpt,
+            ProdKind::SimpleTypeInteger => NonTermKind::SimpleType,
+            ProdKind::SimpleTypeDate => NonTermKind::SimpleType,
+            ProdKind::SimpleTypeAny => NonTermKind::SimpleType,
+            ProdKind::SimpleTypeCond => NonTermKind::SimpleType,
+            ProdKind::CheckP1 => NonTermKind::Check,
+            ProdKind::CondP1 => NonTermKind::Cond,
+            ProdKind::CondP2 => NonTermKind::Cond,
+            ProdKind::CondGT => NonTermKind::Cond,
+            ProdKind::CondGE => NonTermKind::Cond,
+            ProdKind::CondLT => NonTermKind::Cond,
+            ProdKind::CondLE => NonTermKind::Cond,
+            ProdKind::CondEQ => NonTermKind::Cond,
+            ProdKind::CondRegex => NonTermKind::Cond,
+            ProdKind::CondAnd => NonTermKind::Cond,
+            ProdKind::CondOR => NonTermKind::Cond,
+            ProdKind::CondNot => NonTermKind::Cond,
+            ProdKind::CondParenCond => NonTermKind::Cond,
             ProdKind::CardOptional => NonTermKind::Card,
             ProdKind::CardOneOrMore => NonTermKind::Card,
             ProdKind::CardZeroOrMore => NonTermKind::Card,
             ProdKind::CardRange => NonTermKind::Card,
             ProdKind::MaxP1 => NonTermKind::Max,
             ProdKind::MaxStar => NonTermKind::Max,
+            ProdKind::LayoutP1 => NonTermKind::Layout,
+            ProdKind::LayoutItem1P1 => NonTermKind::LayoutItem1,
+            ProdKind::LayoutItem1P2 => NonTermKind::LayoutItem1,
+            ProdKind::LayoutItem0P1 => NonTermKind::LayoutItem0,
+            ProdKind::LayoutItem0P2 => NonTermKind::LayoutItem0,
+            ProdKind::LayoutItemP1 => NonTermKind::LayoutItem,
+            ProdKind::LayoutItemP2 => NonTermKind::LayoutItem,
+            ProdKind::CommentP1 => NonTermKind::Comment,
+            ProdKind::CommentP2 => NonTermKind::Comment,
+            ProdKind::CorncsP1 => NonTermKind::Corncs,
+            ProdKind::Cornc1P1 => NonTermKind::Cornc1,
+            ProdKind::Cornc1P2 => NonTermKind::Cornc1,
+            ProdKind::Cornc0P1 => NonTermKind::Cornc0,
+            ProdKind::Cornc0P2 => NonTermKind::Cornc0,
+            ProdKind::CorncP1 => NonTermKind::Cornc,
+            ProdKind::CorncP2 => NonTermKind::Cornc,
+            ProdKind::CorncP3 => NonTermKind::Cornc,
+            ProdKind::SingleValueStringValue => NonTermKind::SingleValue,
+            ProdKind::SingleValueNumberValue => NonTermKind::SingleValue,
         }
     }
 }
@@ -345,24 +502,88 @@ pub enum State {
     INTEGER_NAMES70,
     STRING_NAMES71,
     DATE_NAMES72,
-    TypeSpecS73,
-    SimpleTypeS74,
-    OPEN_CURLYS75,
-    PLUSS76,
-    STARS77,
-    QUESTIONS78,
-    CardOptS79,
-    CardS80,
-    NumberS81,
-    COMMAS82,
-    STARS83,
-    NumberS84,
-    MaxS85,
-    CLOSE_CURLYS86,
+    CHECKS73,
+    ANYS74,
+    TypeSpecS75,
+    SimpleTypeS76,
+    OPEN_CURLYS77,
+    PLUSS78,
+    STARS79,
+    QUESTIONS80,
+    CardOptS81,
+    CardS82,
+    CardOptS83,
+    CardOptS84,
+    OPEN_PARENS85,
+    TRUES86,
+    FALSES87,
+    GTS88,
+    LTS89,
+    GES90,
+    LES91,
+    EQUALSS92,
+    REGEXS93,
+    NOTS94,
+    CondS95,
+    CHECKS96,
+    CheckOptS97,
+    CheckS98,
+    BARS99,
+    AMPERSANDS100,
+    MoreTypesOptS101,
+    MoreTypesS102,
+    NUMBERS103,
+    CheckOptS104,
+    CheckOptS105,
+    CheckOptS106,
+    CondS107,
+    NUMBERS108,
+    QUOTED_STRINGS109,
+    SingleValueS110,
+    SingleValueS111,
+    SingleValueS112,
+    SingleValueS113,
+    SingleValueS114,
+    QUOTED_STRINGS115,
+    CondS116,
+    ANDS117,
+    ORS118,
+    CondS119,
+    SimpleTypeS120,
+    SimpleTypeS121,
+    COMMAS122,
+    CLOSE_PARENS123,
+    CondS124,
+    CondS125,
+    MoreTypesOptS126,
+    MoreTypesOptS127,
+    STARS128,
+    NUMBERS129,
+    MaxS130,
+    CLOSE_CURLYS131,
+    AUGLS132,
+    WSS133,
+    CommentLineS134,
+    START_COMMENTS135,
+    LayoutS136,
+    LayoutItem1S137,
+    LayoutItem0S138,
+    LayoutItemS139,
+    CommentS140,
+    WSS141,
+    NotCommentS142,
+    CommentS143,
+    CorncsS144,
+    Cornc1S145,
+    Cornc0S146,
+    CorncS147,
+    LayoutItemS148,
+    END_COMMENTS149,
+    CorncS150,
 }
 impl StateT for State {
     fn default_layout() -> Option<Self> {
-        None
+        Some(State::AUGLS132)
     }
 }
 impl From<State> for usize {
@@ -446,20 +667,84 @@ impl std::fmt::Debug for State {
             State::INTEGER_NAMES70 => "70:INTEGER_NAME",
             State::STRING_NAMES71 => "71:STRING_NAME",
             State::DATE_NAMES72 => "72:DATE_NAME",
-            State::TypeSpecS73 => "73:TypeSpec",
-            State::SimpleTypeS74 => "74:SimpleType",
-            State::OPEN_CURLYS75 => "75:OPEN_CURLY",
-            State::PLUSS76 => "76:PLUS",
-            State::STARS77 => "77:STAR",
-            State::QUESTIONS78 => "78:QUESTION",
-            State::CardOptS79 => "79:CardOpt",
-            State::CardS80 => "80:Card",
-            State::NumberS81 => "81:Number",
-            State::COMMAS82 => "82:COMMA",
-            State::STARS83 => "83:STAR",
-            State::NumberS84 => "84:Number",
-            State::MaxS85 => "85:Max",
-            State::CLOSE_CURLYS86 => "86:CLOSE_CURLY",
+            State::CHECKS73 => "73:CHECK",
+            State::ANYS74 => "74:ANY",
+            State::TypeSpecS75 => "75:TypeSpec",
+            State::SimpleTypeS76 => "76:SimpleType",
+            State::OPEN_CURLYS77 => "77:OPEN_CURLY",
+            State::PLUSS78 => "78:PLUS",
+            State::STARS79 => "79:STAR",
+            State::QUESTIONS80 => "80:QUESTION",
+            State::CardOptS81 => "81:CardOpt",
+            State::CardS82 => "82:Card",
+            State::CardOptS83 => "83:CardOpt",
+            State::CardOptS84 => "84:CardOpt",
+            State::OPEN_PARENS85 => "85:OPEN_PAREN",
+            State::TRUES86 => "86:TRUE",
+            State::FALSES87 => "87:FALSE",
+            State::GTS88 => "88:GT",
+            State::LTS89 => "89:LT",
+            State::GES90 => "90:GE",
+            State::LES91 => "91:LE",
+            State::EQUALSS92 => "92:EQUALS",
+            State::REGEXS93 => "93:REGEX",
+            State::NOTS94 => "94:NOT",
+            State::CondS95 => "95:Cond",
+            State::CHECKS96 => "96:CHECK",
+            State::CheckOptS97 => "97:CheckOpt",
+            State::CheckS98 => "98:Check",
+            State::BARS99 => "99:BAR",
+            State::AMPERSANDS100 => "100:AMPERSAND",
+            State::MoreTypesOptS101 => "101:MoreTypesOpt",
+            State::MoreTypesS102 => "102:MoreTypes",
+            State::NUMBERS103 => "103:NUMBER",
+            State::CheckOptS104 => "104:CheckOpt",
+            State::CheckOptS105 => "105:CheckOpt",
+            State::CheckOptS106 => "106:CheckOpt",
+            State::CondS107 => "107:Cond",
+            State::NUMBERS108 => "108:NUMBER",
+            State::QUOTED_STRINGS109 => "109:QUOTED_STRING",
+            State::SingleValueS110 => "110:SingleValue",
+            State::SingleValueS111 => "111:SingleValue",
+            State::SingleValueS112 => "112:SingleValue",
+            State::SingleValueS113 => "113:SingleValue",
+            State::SingleValueS114 => "114:SingleValue",
+            State::QUOTED_STRINGS115 => "115:QUOTED_STRING",
+            State::CondS116 => "116:Cond",
+            State::ANDS117 => "117:AND",
+            State::ORS118 => "118:OR",
+            State::CondS119 => "119:Cond",
+            State::SimpleTypeS120 => "120:SimpleType",
+            State::SimpleTypeS121 => "121:SimpleType",
+            State::COMMAS122 => "122:COMMA",
+            State::CLOSE_PARENS123 => "123:CLOSE_PAREN",
+            State::CondS124 => "124:Cond",
+            State::CondS125 => "125:Cond",
+            State::MoreTypesOptS126 => "126:MoreTypesOpt",
+            State::MoreTypesOptS127 => "127:MoreTypesOpt",
+            State::STARS128 => "128:STAR",
+            State::NUMBERS129 => "129:NUMBER",
+            State::MaxS130 => "130:Max",
+            State::CLOSE_CURLYS131 => "131:CLOSE_CURLY",
+            State::AUGLS132 => "132:AUGL",
+            State::WSS133 => "133:WS",
+            State::CommentLineS134 => "134:CommentLine",
+            State::START_COMMENTS135 => "135:START_COMMENT",
+            State::LayoutS136 => "136:Layout",
+            State::LayoutItem1S137 => "137:LayoutItem1",
+            State::LayoutItem0S138 => "138:LayoutItem0",
+            State::LayoutItemS139 => "139:LayoutItem",
+            State::CommentS140 => "140:Comment",
+            State::WSS141 => "141:WS",
+            State::NotCommentS142 => "142:NotComment",
+            State::CommentS143 => "143:Comment",
+            State::CorncsS144 => "144:Corncs",
+            State::Cornc1S145 => "145:Cornc1",
+            State::Cornc0S146 => "146:Cornc0",
+            State::CorncS147 => "147:Cornc",
+            State::LayoutItemS148 => "148:LayoutItem",
+            State::END_COMMENTS149 => "149:END_COMMENT",
+            State::CorncS150 => "150:Cornc",
         };
         write!(f, "{name}")
     }
@@ -494,10 +779,24 @@ pub enum Terminal {
     INTEGER_NAME,
     STRING_NAME,
     DATE_NAME,
-    Number(pgs_actions::Number),
+    NUMBER(pgs_actions::NUMBER),
     OPTIONAL,
     AMPERSAND,
     AT,
+    CHECK,
+    TRUE,
+    FALSE,
+    GT,
+    LT,
+    GE,
+    LE,
+    EQUALS,
+    QUOTED_STRING(pgs_actions::QUOTED_STRING),
+    REGEX,
+    AND,
+    OR,
+    NOT,
+    ANY,
 }
 #[derive(Debug)]
 pub enum NonTerminal {
@@ -524,12 +823,18 @@ pub enum NonTerminal {
     Properties(pgs_actions::Properties),
     OPTIONALOpt(pgs_actions::OPTIONALOpt),
     Property(pgs_actions::Property),
-    CardOpt(pgs_actions::CardOpt),
     key(pgs_actions::key),
     TypeSpec(pgs_actions::TypeSpec),
+    MoreTypesOpt(pgs_actions::MoreTypesOpt),
+    MoreTypes(pgs_actions::MoreTypes),
     SimpleType(pgs_actions::SimpleType),
+    CardOpt(pgs_actions::CardOpt),
+    CheckOpt(pgs_actions::CheckOpt),
+    Check(pgs_actions::Check),
+    Cond(pgs_actions::Cond),
     Card(pgs_actions::Card),
     Max(pgs_actions::Max),
+    SingleValue(pgs_actions::SingleValue),
 }
 type ActionFn = fn(token: TokenKind) -> Vec<Action<State, ProdKind>>;
 pub struct PgsParserDefinition {
@@ -1038,6 +1343,8 @@ fn action_colon_s68(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
         TK::INTEGER_NAME => Vec::from(&[Shift(State::INTEGER_NAMES70)]),
         TK::STRING_NAME => Vec::from(&[Shift(State::STRING_NAMES71)]),
         TK::DATE_NAME => Vec::from(&[Shift(State::DATE_NAMES72)]),
+        TK::CHECK => Vec::from(&[Shift(State::CHECKS73)]),
+        TK::ANY => Vec::from(&[Shift(State::ANYS74)]),
         _ => vec![],
     }
 }
@@ -1050,157 +1357,828 @@ fn action_endpointtype_s69(token_kind: TokenKind) -> Vec<Action<State, ProdKind>
 }
 fn action_integer_name_s70(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::SimpleTypeP2, 1usize)]),
-        TK::OPEN_CURLY => Vec::from(&[Reduce(PK::SimpleTypeP2, 1usize)]),
-        TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::SimpleTypeP2, 1usize)]),
-        TK::COMMA => Vec::from(&[Reduce(PK::SimpleTypeP2, 1usize)]),
-        TK::BAR => Vec::from(&[Reduce(PK::SimpleTypeP2, 1usize)]),
-        TK::PLUS => Vec::from(&[Reduce(PK::SimpleTypeP2, 1usize)]),
-        TK::STAR => Vec::from(&[Reduce(PK::SimpleTypeP2, 1usize)]),
-        TK::QUESTION => Vec::from(&[Reduce(PK::SimpleTypeP2, 1usize)]),
+        TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::CardOptP2, 0usize)]),
+        TK::OPEN_CURLY => Vec::from(&[Shift(State::OPEN_CURLYS77)]),
+        TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::CardOptP2, 0usize)]),
+        TK::COMMA => Vec::from(&[Reduce(PK::CardOptP2, 0usize)]),
+        TK::BAR => Vec::from(&[Reduce(PK::CardOptP2, 0usize)]),
+        TK::PLUS => Vec::from(&[Shift(State::PLUSS78)]),
+        TK::STAR => Vec::from(&[Shift(State::STARS79)]),
+        TK::QUESTION => Vec::from(&[Shift(State::QUESTIONS80)]),
+        TK::AMPERSAND => Vec::from(&[Reduce(PK::CardOptP2, 0usize)]),
+        TK::CHECK => Vec::from(&[Reduce(PK::CardOptP2, 0usize)]),
         _ => vec![],
     }
 }
 fn action_string_name_s71(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::SimpleTypeP1, 1usize)]),
-        TK::OPEN_CURLY => Vec::from(&[Reduce(PK::SimpleTypeP1, 1usize)]),
-        TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::SimpleTypeP1, 1usize)]),
-        TK::COMMA => Vec::from(&[Reduce(PK::SimpleTypeP1, 1usize)]),
-        TK::BAR => Vec::from(&[Reduce(PK::SimpleTypeP1, 1usize)]),
-        TK::PLUS => Vec::from(&[Reduce(PK::SimpleTypeP1, 1usize)]),
-        TK::STAR => Vec::from(&[Reduce(PK::SimpleTypeP1, 1usize)]),
-        TK::QUESTION => Vec::from(&[Reduce(PK::SimpleTypeP1, 1usize)]),
+        TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::CardOptP2, 0usize)]),
+        TK::OPEN_CURLY => Vec::from(&[Shift(State::OPEN_CURLYS77)]),
+        TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::CardOptP2, 0usize)]),
+        TK::COMMA => Vec::from(&[Reduce(PK::CardOptP2, 0usize)]),
+        TK::BAR => Vec::from(&[Reduce(PK::CardOptP2, 0usize)]),
+        TK::PLUS => Vec::from(&[Shift(State::PLUSS78)]),
+        TK::STAR => Vec::from(&[Shift(State::STARS79)]),
+        TK::QUESTION => Vec::from(&[Shift(State::QUESTIONS80)]),
+        TK::AMPERSAND => Vec::from(&[Reduce(PK::CardOptP2, 0usize)]),
+        TK::CHECK => Vec::from(&[Reduce(PK::CardOptP2, 0usize)]),
         _ => vec![],
     }
 }
 fn action_date_name_s72(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::SimpleTypeP3, 1usize)]),
-        TK::OPEN_CURLY => Vec::from(&[Reduce(PK::SimpleTypeP3, 1usize)]),
-        TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::SimpleTypeP3, 1usize)]),
-        TK::COMMA => Vec::from(&[Reduce(PK::SimpleTypeP3, 1usize)]),
-        TK::BAR => Vec::from(&[Reduce(PK::SimpleTypeP3, 1usize)]),
-        TK::PLUS => Vec::from(&[Reduce(PK::SimpleTypeP3, 1usize)]),
-        TK::STAR => Vec::from(&[Reduce(PK::SimpleTypeP3, 1usize)]),
-        TK::QUESTION => Vec::from(&[Reduce(PK::SimpleTypeP3, 1usize)]),
-        _ => vec![],
-    }
-}
-fn action_typespec_s73(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
-    match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::CardOptP2, 0usize)]),
-        TK::OPEN_CURLY => Vec::from(&[Shift(State::OPEN_CURLYS75)]),
+        TK::OPEN_CURLY => Vec::from(&[Shift(State::OPEN_CURLYS77)]),
         TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::CardOptP2, 0usize)]),
         TK::COMMA => Vec::from(&[Reduce(PK::CardOptP2, 0usize)]),
         TK::BAR => Vec::from(&[Reduce(PK::CardOptP2, 0usize)]),
-        TK::PLUS => Vec::from(&[Shift(State::PLUSS76)]),
-        TK::STAR => Vec::from(&[Shift(State::STARS77)]),
-        TK::QUESTION => Vec::from(&[Shift(State::QUESTIONS78)]),
+        TK::PLUS => Vec::from(&[Shift(State::PLUSS78)]),
+        TK::STAR => Vec::from(&[Shift(State::STARS79)]),
+        TK::QUESTION => Vec::from(&[Shift(State::QUESTIONS80)]),
+        TK::AMPERSAND => Vec::from(&[Reduce(PK::CardOptP2, 0usize)]),
+        TK::CHECK => Vec::from(&[Reduce(PK::CardOptP2, 0usize)]),
         _ => vec![],
     }
 }
-fn action_simpletype_s74(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_check_s73(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::TypeSpecP1, 1usize)]),
-        TK::OPEN_CURLY => Vec::from(&[Reduce(PK::TypeSpecP1, 1usize)]),
-        TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::TypeSpecP1, 1usize)]),
-        TK::COMMA => Vec::from(&[Reduce(PK::TypeSpecP1, 1usize)]),
-        TK::BAR => Vec::from(&[Reduce(PK::TypeSpecP1, 1usize)]),
-        TK::PLUS => Vec::from(&[Reduce(PK::TypeSpecP1, 1usize)]),
-        TK::STAR => Vec::from(&[Reduce(PK::TypeSpecP1, 1usize)]),
-        TK::QUESTION => Vec::from(&[Reduce(PK::TypeSpecP1, 1usize)]),
+        TK::OPEN_PAREN => Vec::from(&[Shift(State::OPEN_PARENS85)]),
+        TK::TRUE => Vec::from(&[Shift(State::TRUES86)]),
+        TK::FALSE => Vec::from(&[Shift(State::FALSES87)]),
+        TK::GT => Vec::from(&[Shift(State::GTS88)]),
+        TK::LT => Vec::from(&[Shift(State::LTS89)]),
+        TK::GE => Vec::from(&[Shift(State::GES90)]),
+        TK::LE => Vec::from(&[Shift(State::LES91)]),
+        TK::EQUALS => Vec::from(&[Shift(State::EQUALSS92)]),
+        TK::REGEX => Vec::from(&[Shift(State::REGEXS93)]),
+        TK::NOT => Vec::from(&[Shift(State::NOTS94)]),
         _ => vec![],
     }
 }
-fn action_open_curly_s75(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_any_s74(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::Number => Vec::from(&[Shift(State::NumberS81)]),
+        TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::CheckOptP2, 0usize)]),
+        TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::CheckOptP2, 0usize)]),
+        TK::COMMA => Vec::from(&[Reduce(PK::CheckOptP2, 0usize)]),
+        TK::BAR => Vec::from(&[Reduce(PK::CheckOptP2, 0usize)]),
+        TK::AMPERSAND => Vec::from(&[Reduce(PK::CheckOptP2, 0usize)]),
+        TK::CHECK => Vec::from(&[Shift(State::CHECKS96)]),
         _ => vec![],
     }
 }
-fn action_plus_s76(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_typespec_s75(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::PropertyP1, 3usize)]),
+        TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::PropertyP1, 3usize)]),
+        TK::COMMA => Vec::from(&[Reduce(PK::PropertyP1, 3usize)]),
+        TK::BAR => Vec::from(&[Reduce(PK::PropertyP1, 3usize)]),
+        _ => vec![],
+    }
+}
+fn action_simpletype_s76(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::MoreTypesOptP2, 0usize)]),
+        TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::MoreTypesOptP2, 0usize)]),
+        TK::COMMA => Vec::from(&[Reduce(PK::MoreTypesOptP2, 0usize)]),
+        TK::BAR => Vec::from(&[Shift(State::BARS99)]),
+        TK::AMPERSAND => Vec::from(&[Shift(State::AMPERSANDS100)]),
+        _ => vec![],
+    }
+}
+fn action_open_curly_s77(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::NUMBER => Vec::from(&[Shift(State::NUMBERS103)]),
+        _ => vec![],
+    }
+}
+fn action_plus_s78(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::CardOneOrMore, 1usize)]),
         TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::CardOneOrMore, 1usize)]),
         TK::COMMA => Vec::from(&[Reduce(PK::CardOneOrMore, 1usize)]),
         TK::BAR => Vec::from(&[Reduce(PK::CardOneOrMore, 1usize)]),
+        TK::AMPERSAND => Vec::from(&[Reduce(PK::CardOneOrMore, 1usize)]),
+        TK::CHECK => Vec::from(&[Reduce(PK::CardOneOrMore, 1usize)]),
         _ => vec![],
     }
 }
-fn action_star_s77(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_star_s79(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::CardZeroOrMore, 1usize)]),
         TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::CardZeroOrMore, 1usize)]),
         TK::COMMA => Vec::from(&[Reduce(PK::CardZeroOrMore, 1usize)]),
         TK::BAR => Vec::from(&[Reduce(PK::CardZeroOrMore, 1usize)]),
+        TK::AMPERSAND => Vec::from(&[Reduce(PK::CardZeroOrMore, 1usize)]),
+        TK::CHECK => Vec::from(&[Reduce(PK::CardZeroOrMore, 1usize)]),
         _ => vec![],
     }
 }
-fn action_question_s78(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_question_s80(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::CardOptional, 1usize)]),
         TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::CardOptional, 1usize)]),
         TK::COMMA => Vec::from(&[Reduce(PK::CardOptional, 1usize)]),
         TK::BAR => Vec::from(&[Reduce(PK::CardOptional, 1usize)]),
+        TK::AMPERSAND => Vec::from(&[Reduce(PK::CardOptional, 1usize)]),
+        TK::CHECK => Vec::from(&[Reduce(PK::CardOptional, 1usize)]),
         _ => vec![],
     }
 }
-fn action_cardopt_s79(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_cardopt_s81(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::PropertyP1, 4usize)]),
-        TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::PropertyP1, 4usize)]),
-        TK::COMMA => Vec::from(&[Reduce(PK::PropertyP1, 4usize)]),
-        TK::BAR => Vec::from(&[Reduce(PK::PropertyP1, 4usize)]),
+        TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::CheckOptP2, 0usize)]),
+        TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::CheckOptP2, 0usize)]),
+        TK::COMMA => Vec::from(&[Reduce(PK::CheckOptP2, 0usize)]),
+        TK::BAR => Vec::from(&[Reduce(PK::CheckOptP2, 0usize)]),
+        TK::AMPERSAND => Vec::from(&[Reduce(PK::CheckOptP2, 0usize)]),
+        TK::CHECK => Vec::from(&[Shift(State::CHECKS96)]),
         _ => vec![],
     }
 }
-fn action_card_s80(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_card_s82(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::CardOptP1, 1usize)]),
         TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::CardOptP1, 1usize)]),
         TK::COMMA => Vec::from(&[Reduce(PK::CardOptP1, 1usize)]),
         TK::BAR => Vec::from(&[Reduce(PK::CardOptP1, 1usize)]),
+        TK::AMPERSAND => Vec::from(&[Reduce(PK::CardOptP1, 1usize)]),
+        TK::CHECK => Vec::from(&[Reduce(PK::CardOptP1, 1usize)]),
         _ => vec![],
     }
 }
-fn action_number_s81(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_cardopt_s83(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::COMMA => Vec::from(&[Shift(State::COMMAS82)]),
+        TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::CheckOptP2, 0usize)]),
+        TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::CheckOptP2, 0usize)]),
+        TK::COMMA => Vec::from(&[Reduce(PK::CheckOptP2, 0usize)]),
+        TK::BAR => Vec::from(&[Reduce(PK::CheckOptP2, 0usize)]),
+        TK::AMPERSAND => Vec::from(&[Reduce(PK::CheckOptP2, 0usize)]),
+        TK::CHECK => Vec::from(&[Shift(State::CHECKS96)]),
         _ => vec![],
     }
 }
-fn action_comma_s82(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_cardopt_s84(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::STAR => Vec::from(&[Shift(State::STARS83)]),
-        TK::Number => Vec::from(&[Shift(State::NumberS84)]),
+        TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::CheckOptP2, 0usize)]),
+        TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::CheckOptP2, 0usize)]),
+        TK::COMMA => Vec::from(&[Reduce(PK::CheckOptP2, 0usize)]),
+        TK::BAR => Vec::from(&[Reduce(PK::CheckOptP2, 0usize)]),
+        TK::AMPERSAND => Vec::from(&[Reduce(PK::CheckOptP2, 0usize)]),
+        TK::CHECK => Vec::from(&[Shift(State::CHECKS96)]),
         _ => vec![],
     }
 }
-fn action_star_s83(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_open_paren_s85(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::OPEN_PAREN => Vec::from(&[Shift(State::OPEN_PARENS85)]),
+        TK::TRUE => Vec::from(&[Shift(State::TRUES86)]),
+        TK::FALSE => Vec::from(&[Shift(State::FALSES87)]),
+        TK::GT => Vec::from(&[Shift(State::GTS88)]),
+        TK::LT => Vec::from(&[Shift(State::LTS89)]),
+        TK::GE => Vec::from(&[Shift(State::GES90)]),
+        TK::LE => Vec::from(&[Shift(State::LES91)]),
+        TK::EQUALS => Vec::from(&[Shift(State::EQUALSS92)]),
+        TK::REGEX => Vec::from(&[Shift(State::REGEXS93)]),
+        TK::NOT => Vec::from(&[Shift(State::NOTS94)]),
+        _ => vec![],
+    }
+}
+fn action_true_s86(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::CondP1, 1usize)]),
+        TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::CondP1, 1usize)]),
+        TK::COMMA => Vec::from(&[Reduce(PK::CondP1, 1usize)]),
+        TK::BAR => Vec::from(&[Reduce(PK::CondP1, 1usize)]),
+        TK::AMPERSAND => Vec::from(&[Reduce(PK::CondP1, 1usize)]),
+        TK::AND => Vec::from(&[Reduce(PK::CondP1, 1usize)]),
+        TK::OR => Vec::from(&[Reduce(PK::CondP1, 1usize)]),
+        _ => vec![],
+    }
+}
+fn action_false_s87(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::CondP2, 1usize)]),
+        TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::CondP2, 1usize)]),
+        TK::COMMA => Vec::from(&[Reduce(PK::CondP2, 1usize)]),
+        TK::BAR => Vec::from(&[Reduce(PK::CondP2, 1usize)]),
+        TK::AMPERSAND => Vec::from(&[Reduce(PK::CondP2, 1usize)]),
+        TK::AND => Vec::from(&[Reduce(PK::CondP2, 1usize)]),
+        TK::OR => Vec::from(&[Reduce(PK::CondP2, 1usize)]),
+        _ => vec![],
+    }
+}
+fn action_gt_s88(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::NUMBER => Vec::from(&[Shift(State::NUMBERS108)]),
+        TK::QUOTED_STRING => Vec::from(&[Shift(State::QUOTED_STRINGS109)]),
+        _ => vec![],
+    }
+}
+fn action_lt_s89(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::NUMBER => Vec::from(&[Shift(State::NUMBERS108)]),
+        TK::QUOTED_STRING => Vec::from(&[Shift(State::QUOTED_STRINGS109)]),
+        _ => vec![],
+    }
+}
+fn action_ge_s90(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::NUMBER => Vec::from(&[Shift(State::NUMBERS108)]),
+        TK::QUOTED_STRING => Vec::from(&[Shift(State::QUOTED_STRINGS109)]),
+        _ => vec![],
+    }
+}
+fn action_le_s91(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::NUMBER => Vec::from(&[Shift(State::NUMBERS108)]),
+        TK::QUOTED_STRING => Vec::from(&[Shift(State::QUOTED_STRINGS109)]),
+        _ => vec![],
+    }
+}
+fn action_equals_s92(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::NUMBER => Vec::from(&[Shift(State::NUMBERS108)]),
+        TK::QUOTED_STRING => Vec::from(&[Shift(State::QUOTED_STRINGS109)]),
+        _ => vec![],
+    }
+}
+fn action_regex_s93(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::QUOTED_STRING => Vec::from(&[Shift(State::QUOTED_STRINGS115)]),
+        _ => vec![],
+    }
+}
+fn action_not_s94(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::OPEN_PAREN => Vec::from(&[Shift(State::OPEN_PARENS85)]),
+        TK::TRUE => Vec::from(&[Shift(State::TRUES86)]),
+        TK::FALSE => Vec::from(&[Shift(State::FALSES87)]),
+        TK::GT => Vec::from(&[Shift(State::GTS88)]),
+        TK::LT => Vec::from(&[Shift(State::LTS89)]),
+        TK::GE => Vec::from(&[Shift(State::GES90)]),
+        TK::LE => Vec::from(&[Shift(State::LES91)]),
+        TK::EQUALS => Vec::from(&[Shift(State::EQUALSS92)]),
+        TK::REGEX => Vec::from(&[Shift(State::REGEXS93)]),
+        TK::NOT => Vec::from(&[Shift(State::NOTS94)]),
+        _ => vec![],
+    }
+}
+fn action_cond_s95(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::SimpleTypeCond, 2usize)]),
+        TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::SimpleTypeCond, 2usize)]),
+        TK::COMMA => Vec::from(&[Reduce(PK::SimpleTypeCond, 2usize)]),
+        TK::BAR => Vec::from(&[Reduce(PK::SimpleTypeCond, 2usize)]),
+        TK::AMPERSAND => Vec::from(&[Reduce(PK::SimpleTypeCond, 2usize)]),
+        TK::AND => Vec::from(&[Shift(State::ANDS117)]),
+        TK::OR => Vec::from(&[Shift(State::ORS118)]),
+        _ => vec![],
+    }
+}
+fn action_check_s96(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::OPEN_PAREN => Vec::from(&[Shift(State::OPEN_PARENS85)]),
+        TK::TRUE => Vec::from(&[Shift(State::TRUES86)]),
+        TK::FALSE => Vec::from(&[Shift(State::FALSES87)]),
+        TK::GT => Vec::from(&[Shift(State::GTS88)]),
+        TK::LT => Vec::from(&[Shift(State::LTS89)]),
+        TK::GE => Vec::from(&[Shift(State::GES90)]),
+        TK::LE => Vec::from(&[Shift(State::LES91)]),
+        TK::EQUALS => Vec::from(&[Shift(State::EQUALSS92)]),
+        TK::REGEX => Vec::from(&[Shift(State::REGEXS93)]),
+        TK::NOT => Vec::from(&[Shift(State::NOTS94)]),
+        _ => vec![],
+    }
+}
+fn action_checkopt_s97(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::SimpleTypeAny, 2usize)]),
+        TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::SimpleTypeAny, 2usize)]),
+        TK::COMMA => Vec::from(&[Reduce(PK::SimpleTypeAny, 2usize)]),
+        TK::BAR => Vec::from(&[Reduce(PK::SimpleTypeAny, 2usize)]),
+        TK::AMPERSAND => Vec::from(&[Reduce(PK::SimpleTypeAny, 2usize)]),
+        _ => vec![],
+    }
+}
+fn action_check_s98(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::CheckOptP1, 1usize)]),
+        TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::CheckOptP1, 1usize)]),
+        TK::COMMA => Vec::from(&[Reduce(PK::CheckOptP1, 1usize)]),
+        TK::BAR => Vec::from(&[Reduce(PK::CheckOptP1, 1usize)]),
+        TK::AMPERSAND => Vec::from(&[Reduce(PK::CheckOptP1, 1usize)]),
+        _ => vec![],
+    }
+}
+fn action_bar_s99(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::INTEGER_NAME => Vec::from(&[Shift(State::INTEGER_NAMES70)]),
+        TK::STRING_NAME => Vec::from(&[Shift(State::STRING_NAMES71)]),
+        TK::DATE_NAME => Vec::from(&[Shift(State::DATE_NAMES72)]),
+        TK::CHECK => Vec::from(&[Shift(State::CHECKS73)]),
+        TK::ANY => Vec::from(&[Shift(State::ANYS74)]),
+        _ => vec![],
+    }
+}
+fn action_ampersand_s100(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::INTEGER_NAME => Vec::from(&[Shift(State::INTEGER_NAMES70)]),
+        TK::STRING_NAME => Vec::from(&[Shift(State::STRING_NAMES71)]),
+        TK::DATE_NAME => Vec::from(&[Shift(State::DATE_NAMES72)]),
+        TK::CHECK => Vec::from(&[Shift(State::CHECKS73)]),
+        TK::ANY => Vec::from(&[Shift(State::ANYS74)]),
+        _ => vec![],
+    }
+}
+fn action_moretypesopt_s101(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::TypeSpecP1, 2usize)]),
+        TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::TypeSpecP1, 2usize)]),
+        TK::COMMA => Vec::from(&[Reduce(PK::TypeSpecP1, 2usize)]),
+        TK::BAR => Vec::from(&[Reduce(PK::TypeSpecP1, 2usize)]),
+        _ => vec![],
+    }
+}
+fn action_moretypes_s102(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::MoreTypesOptP1, 1usize)]),
+        TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::MoreTypesOptP1, 1usize)]),
+        TK::COMMA => Vec::from(&[Reduce(PK::MoreTypesOptP1, 1usize)]),
+        TK::BAR => Vec::from(&[Reduce(PK::MoreTypesOptP1, 1usize)]),
+        _ => vec![],
+    }
+}
+fn action_number_s103(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::COMMA => Vec::from(&[Shift(State::COMMAS122)]),
+        _ => vec![],
+    }
+}
+fn action_checkopt_s104(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::SimpleTypeInteger, 3usize)]),
+        TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::SimpleTypeInteger, 3usize)]),
+        TK::COMMA => Vec::from(&[Reduce(PK::SimpleTypeInteger, 3usize)]),
+        TK::BAR => Vec::from(&[Reduce(PK::SimpleTypeInteger, 3usize)]),
+        TK::AMPERSAND => Vec::from(&[Reduce(PK::SimpleTypeInteger, 3usize)]),
+        _ => vec![],
+    }
+}
+fn action_checkopt_s105(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::SimpleTypeStringSpec, 3usize)]),
+        TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::SimpleTypeStringSpec, 3usize)]),
+        TK::COMMA => Vec::from(&[Reduce(PK::SimpleTypeStringSpec, 3usize)]),
+        TK::BAR => Vec::from(&[Reduce(PK::SimpleTypeStringSpec, 3usize)]),
+        TK::AMPERSAND => Vec::from(&[Reduce(PK::SimpleTypeStringSpec, 3usize)]),
+        _ => vec![],
+    }
+}
+fn action_checkopt_s106(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::SimpleTypeDate, 3usize)]),
+        TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::SimpleTypeDate, 3usize)]),
+        TK::COMMA => Vec::from(&[Reduce(PK::SimpleTypeDate, 3usize)]),
+        TK::BAR => Vec::from(&[Reduce(PK::SimpleTypeDate, 3usize)]),
+        TK::AMPERSAND => Vec::from(&[Reduce(PK::SimpleTypeDate, 3usize)]),
+        _ => vec![],
+    }
+}
+fn action_cond_s107(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::CLOSE_PAREN => Vec::from(&[Shift(State::CLOSE_PARENS123)]),
+        TK::AND => Vec::from(&[Shift(State::ANDS117)]),
+        TK::OR => Vec::from(&[Shift(State::ORS118)]),
+        _ => vec![],
+    }
+}
+fn action_number_s108(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::SingleValueNumberValue, 1usize)]),
+        TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::SingleValueNumberValue, 1usize)]),
+        TK::COMMA => Vec::from(&[Reduce(PK::SingleValueNumberValue, 1usize)]),
+        TK::BAR => Vec::from(&[Reduce(PK::SingleValueNumberValue, 1usize)]),
+        TK::AMPERSAND => Vec::from(&[Reduce(PK::SingleValueNumberValue, 1usize)]),
+        TK::AND => Vec::from(&[Reduce(PK::SingleValueNumberValue, 1usize)]),
+        TK::OR => Vec::from(&[Reduce(PK::SingleValueNumberValue, 1usize)]),
+        _ => vec![],
+    }
+}
+fn action_quoted_string_s109(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::SingleValueStringValue, 1usize)]),
+        TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::SingleValueStringValue, 1usize)]),
+        TK::COMMA => Vec::from(&[Reduce(PK::SingleValueStringValue, 1usize)]),
+        TK::BAR => Vec::from(&[Reduce(PK::SingleValueStringValue, 1usize)]),
+        TK::AMPERSAND => Vec::from(&[Reduce(PK::SingleValueStringValue, 1usize)]),
+        TK::AND => Vec::from(&[Reduce(PK::SingleValueStringValue, 1usize)]),
+        TK::OR => Vec::from(&[Reduce(PK::SingleValueStringValue, 1usize)]),
+        _ => vec![],
+    }
+}
+fn action_singlevalue_s110(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::CondGT, 2usize)]),
+        TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::CondGT, 2usize)]),
+        TK::COMMA => Vec::from(&[Reduce(PK::CondGT, 2usize)]),
+        TK::BAR => Vec::from(&[Reduce(PK::CondGT, 2usize)]),
+        TK::AMPERSAND => Vec::from(&[Reduce(PK::CondGT, 2usize)]),
+        TK::AND => Vec::from(&[Reduce(PK::CondGT, 2usize)]),
+        TK::OR => Vec::from(&[Reduce(PK::CondGT, 2usize)]),
+        _ => vec![],
+    }
+}
+fn action_singlevalue_s111(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::CondLT, 2usize)]),
+        TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::CondLT, 2usize)]),
+        TK::COMMA => Vec::from(&[Reduce(PK::CondLT, 2usize)]),
+        TK::BAR => Vec::from(&[Reduce(PK::CondLT, 2usize)]),
+        TK::AMPERSAND => Vec::from(&[Reduce(PK::CondLT, 2usize)]),
+        TK::AND => Vec::from(&[Reduce(PK::CondLT, 2usize)]),
+        TK::OR => Vec::from(&[Reduce(PK::CondLT, 2usize)]),
+        _ => vec![],
+    }
+}
+fn action_singlevalue_s112(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::CondGE, 2usize)]),
+        TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::CondGE, 2usize)]),
+        TK::COMMA => Vec::from(&[Reduce(PK::CondGE, 2usize)]),
+        TK::BAR => Vec::from(&[Reduce(PK::CondGE, 2usize)]),
+        TK::AMPERSAND => Vec::from(&[Reduce(PK::CondGE, 2usize)]),
+        TK::AND => Vec::from(&[Reduce(PK::CondGE, 2usize)]),
+        TK::OR => Vec::from(&[Reduce(PK::CondGE, 2usize)]),
+        _ => vec![],
+    }
+}
+fn action_singlevalue_s113(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::CondLE, 2usize)]),
+        TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::CondLE, 2usize)]),
+        TK::COMMA => Vec::from(&[Reduce(PK::CondLE, 2usize)]),
+        TK::BAR => Vec::from(&[Reduce(PK::CondLE, 2usize)]),
+        TK::AMPERSAND => Vec::from(&[Reduce(PK::CondLE, 2usize)]),
+        TK::AND => Vec::from(&[Reduce(PK::CondLE, 2usize)]),
+        TK::OR => Vec::from(&[Reduce(PK::CondLE, 2usize)]),
+        _ => vec![],
+    }
+}
+fn action_singlevalue_s114(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::CondEQ, 2usize)]),
+        TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::CondEQ, 2usize)]),
+        TK::COMMA => Vec::from(&[Reduce(PK::CondEQ, 2usize)]),
+        TK::BAR => Vec::from(&[Reduce(PK::CondEQ, 2usize)]),
+        TK::AMPERSAND => Vec::from(&[Reduce(PK::CondEQ, 2usize)]),
+        TK::AND => Vec::from(&[Reduce(PK::CondEQ, 2usize)]),
+        TK::OR => Vec::from(&[Reduce(PK::CondEQ, 2usize)]),
+        _ => vec![],
+    }
+}
+fn action_quoted_string_s115(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::CondRegex, 2usize)]),
+        TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::CondRegex, 2usize)]),
+        TK::COMMA => Vec::from(&[Reduce(PK::CondRegex, 2usize)]),
+        TK::BAR => Vec::from(&[Reduce(PK::CondRegex, 2usize)]),
+        TK::AMPERSAND => Vec::from(&[Reduce(PK::CondRegex, 2usize)]),
+        TK::AND => Vec::from(&[Reduce(PK::CondRegex, 2usize)]),
+        TK::OR => Vec::from(&[Reduce(PK::CondRegex, 2usize)]),
+        _ => vec![],
+    }
+}
+fn action_cond_s116(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::CondNot, 2usize)]),
+        TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::CondNot, 2usize)]),
+        TK::COMMA => Vec::from(&[Reduce(PK::CondNot, 2usize)]),
+        TK::BAR => Vec::from(&[Reduce(PK::CondNot, 2usize)]),
+        TK::AMPERSAND => Vec::from(&[Reduce(PK::CondNot, 2usize)]),
+        TK::AND => Vec::from(&[Reduce(PK::CondNot, 2usize)]),
+        TK::OR => Vec::from(&[Reduce(PK::CondNot, 2usize)]),
+        _ => vec![],
+    }
+}
+fn action_and_s117(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::OPEN_PAREN => Vec::from(&[Shift(State::OPEN_PARENS85)]),
+        TK::TRUE => Vec::from(&[Shift(State::TRUES86)]),
+        TK::FALSE => Vec::from(&[Shift(State::FALSES87)]),
+        TK::GT => Vec::from(&[Shift(State::GTS88)]),
+        TK::LT => Vec::from(&[Shift(State::LTS89)]),
+        TK::GE => Vec::from(&[Shift(State::GES90)]),
+        TK::LE => Vec::from(&[Shift(State::LES91)]),
+        TK::EQUALS => Vec::from(&[Shift(State::EQUALSS92)]),
+        TK::REGEX => Vec::from(&[Shift(State::REGEXS93)]),
+        TK::NOT => Vec::from(&[Shift(State::NOTS94)]),
+        _ => vec![],
+    }
+}
+fn action_or_s118(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::OPEN_PAREN => Vec::from(&[Shift(State::OPEN_PARENS85)]),
+        TK::TRUE => Vec::from(&[Shift(State::TRUES86)]),
+        TK::FALSE => Vec::from(&[Shift(State::FALSES87)]),
+        TK::GT => Vec::from(&[Shift(State::GTS88)]),
+        TK::LT => Vec::from(&[Shift(State::LTS89)]),
+        TK::GE => Vec::from(&[Shift(State::GES90)]),
+        TK::LE => Vec::from(&[Shift(State::LES91)]),
+        TK::EQUALS => Vec::from(&[Shift(State::EQUALSS92)]),
+        TK::REGEX => Vec::from(&[Shift(State::REGEXS93)]),
+        TK::NOT => Vec::from(&[Shift(State::NOTS94)]),
+        _ => vec![],
+    }
+}
+fn action_cond_s119(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::CheckP1, 2usize)]),
+        TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::CheckP1, 2usize)]),
+        TK::COMMA => Vec::from(&[Reduce(PK::CheckP1, 2usize)]),
+        TK::BAR => Vec::from(&[Reduce(PK::CheckP1, 2usize)]),
+        TK::AMPERSAND => Vec::from(&[Reduce(PK::CheckP1, 2usize)]),
+        TK::AND => Vec::from(&[Shift(State::ANDS117)]),
+        TK::OR => Vec::from(&[Shift(State::ORS118)]),
+        _ => vec![],
+    }
+}
+fn action_simpletype_s120(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::MoreTypesOptP2, 0usize)]),
+        TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::MoreTypesOptP2, 0usize)]),
+        TK::COMMA => Vec::from(&[Reduce(PK::MoreTypesOptP2, 0usize)]),
+        TK::BAR => Vec::from(&[Shift(State::BARS99)]),
+        TK::AMPERSAND => Vec::from(&[Shift(State::AMPERSANDS100)]),
+        _ => vec![],
+    }
+}
+fn action_simpletype_s121(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::MoreTypesOptP2, 0usize)]),
+        TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::MoreTypesOptP2, 0usize)]),
+        TK::COMMA => Vec::from(&[Reduce(PK::MoreTypesOptP2, 0usize)]),
+        TK::BAR => Vec::from(&[Shift(State::BARS99)]),
+        TK::AMPERSAND => Vec::from(&[Shift(State::AMPERSANDS100)]),
+        _ => vec![],
+    }
+}
+fn action_comma_s122(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::STAR => Vec::from(&[Shift(State::STARS128)]),
+        TK::NUMBER => Vec::from(&[Shift(State::NUMBERS129)]),
+        _ => vec![],
+    }
+}
+fn action_close_paren_s123(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::CondParenCond, 3usize)]),
+        TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::CondParenCond, 3usize)]),
+        TK::COMMA => Vec::from(&[Reduce(PK::CondParenCond, 3usize)]),
+        TK::BAR => Vec::from(&[Reduce(PK::CondParenCond, 3usize)]),
+        TK::AMPERSAND => Vec::from(&[Reduce(PK::CondParenCond, 3usize)]),
+        TK::AND => Vec::from(&[Reduce(PK::CondParenCond, 3usize)]),
+        TK::OR => Vec::from(&[Reduce(PK::CondParenCond, 3usize)]),
+        _ => vec![],
+    }
+}
+fn action_cond_s124(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::CondAnd, 3usize)]),
+        TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::CondAnd, 3usize)]),
+        TK::COMMA => Vec::from(&[Reduce(PK::CondAnd, 3usize)]),
+        TK::BAR => Vec::from(&[Reduce(PK::CondAnd, 3usize)]),
+        TK::AMPERSAND => Vec::from(&[Reduce(PK::CondAnd, 3usize)]),
+        TK::AND => Vec::from(&[Reduce(PK::CondAnd, 3usize)]),
+        TK::OR => Vec::from(&[Reduce(PK::CondAnd, 3usize)]),
+        _ => vec![],
+    }
+}
+fn action_cond_s125(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::CondOR, 3usize)]),
+        TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::CondOR, 3usize)]),
+        TK::COMMA => Vec::from(&[Reduce(PK::CondOR, 3usize)]),
+        TK::BAR => Vec::from(&[Reduce(PK::CondOR, 3usize)]),
+        TK::AMPERSAND => Vec::from(&[Reduce(PK::CondOR, 3usize)]),
+        TK::AND => Vec::from(&[Reduce(PK::CondOR, 3usize)]),
+        TK::OR => Vec::from(&[Reduce(PK::CondOR, 3usize)]),
+        _ => vec![],
+    }
+}
+fn action_moretypesopt_s126(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::MoreTypesUnionType, 3usize)]),
+        TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::MoreTypesUnionType, 3usize)]),
+        TK::COMMA => Vec::from(&[Reduce(PK::MoreTypesUnionType, 3usize)]),
+        TK::BAR => Vec::from(&[Reduce(PK::MoreTypesUnionType, 3usize)]),
+        _ => vec![],
+    }
+}
+fn action_moretypesopt_s127(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::MoreTypesIntersectionType, 3usize)]),
+        TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::MoreTypesIntersectionType, 3usize)]),
+        TK::COMMA => Vec::from(&[Reduce(PK::MoreTypesIntersectionType, 3usize)]),
+        TK::BAR => Vec::from(&[Reduce(PK::MoreTypesIntersectionType, 3usize)]),
+        _ => vec![],
+    }
+}
+fn action_star_s128(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::MaxStar, 1usize)]),
         _ => vec![],
     }
 }
-fn action_number_s84(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_number_s129(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::MaxP1, 1usize)]),
         _ => vec![],
     }
 }
-fn action_max_s85(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_max_s130(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::CLOSE_CURLY => Vec::from(&[Shift(State::CLOSE_CURLYS86)]),
+        TK::CLOSE_CURLY => Vec::from(&[Shift(State::CLOSE_CURLYS131)]),
         _ => vec![],
     }
 }
-fn action_close_curly_s86(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_close_curly_s131(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::CardRange, 5usize)]),
         TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::CardRange, 5usize)]),
         TK::COMMA => Vec::from(&[Reduce(PK::CardRange, 5usize)]),
         TK::BAR => Vec::from(&[Reduce(PK::CardRange, 5usize)]),
+        TK::AMPERSAND => Vec::from(&[Reduce(PK::CardRange, 5usize)]),
+        TK::CHECK => Vec::from(&[Reduce(PK::CardRange, 5usize)]),
+        _ => vec![],
+    }
+}
+fn action_augl_s132(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::STOP => Vec::from(&[Reduce(PK::LayoutItem0P2, 0usize)]),
+        TK::WS => Vec::from(&[Shift(State::WSS133)]),
+        TK::CommentLine => Vec::from(&[Shift(State::CommentLineS134)]),
+        TK::START_COMMENT => Vec::from(&[Shift(State::START_COMMENTS135)]),
+        _ => vec![],
+    }
+}
+fn action_ws_s133(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::STOP => Vec::from(&[Reduce(PK::LayoutItemP1, 1usize)]),
+        TK::WS => Vec::from(&[Reduce(PK::LayoutItemP1, 1usize)]),
+        TK::CommentLine => Vec::from(&[Reduce(PK::LayoutItemP1, 1usize)]),
+        TK::START_COMMENT => Vec::from(&[Reduce(PK::LayoutItemP1, 1usize)]),
+        _ => vec![],
+    }
+}
+fn action_commentline_s134(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::STOP => Vec::from(&[Reduce(PK::CommentP2, 1usize)]),
+        TK::WS => Vec::from(&[Reduce(PK::CommentP2, 1usize)]),
+        TK::CommentLine => Vec::from(&[Reduce(PK::CommentP2, 1usize)]),
+        TK::NotComment => Vec::from(&[Reduce(PK::CommentP2, 1usize)]),
+        TK::START_COMMENT => Vec::from(&[Reduce(PK::CommentP2, 1usize)]),
+        TK::END_COMMENT => Vec::from(&[Reduce(PK::CommentP2, 1usize)]),
+        _ => vec![],
+    }
+}
+fn action_start_comment_s135(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::WS => Vec::from(&[Shift(State::WSS141)]),
+        TK::CommentLine => Vec::from(&[Shift(State::CommentLineS134)]),
+        TK::NotComment => Vec::from(&[Shift(State::NotCommentS142)]),
+        TK::START_COMMENT => Vec::from(&[Shift(State::START_COMMENTS135)]),
+        TK::END_COMMENT => Vec::from(&[Reduce(PK::Cornc0P2, 0usize)]),
+        _ => vec![],
+    }
+}
+fn action_layout_s136(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::STOP => Vec::from(&[Accept]),
+        _ => vec![],
+    }
+}
+fn action_layoutitem1_s137(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::STOP => Vec::from(&[Reduce(PK::LayoutItem0P1, 1usize)]),
+        TK::WS => Vec::from(&[Shift(State::WSS133)]),
+        TK::CommentLine => Vec::from(&[Shift(State::CommentLineS134)]),
+        TK::START_COMMENT => Vec::from(&[Shift(State::START_COMMENTS135)]),
+        _ => vec![],
+    }
+}
+fn action_layoutitem0_s138(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::STOP => Vec::from(&[Reduce(PK::LayoutP1, 1usize)]),
+        _ => vec![],
+    }
+}
+fn action_layoutitem_s139(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::STOP => Vec::from(&[Reduce(PK::LayoutItem1P2, 1usize)]),
+        TK::WS => Vec::from(&[Reduce(PK::LayoutItem1P2, 1usize)]),
+        TK::CommentLine => Vec::from(&[Reduce(PK::LayoutItem1P2, 1usize)]),
+        TK::START_COMMENT => Vec::from(&[Reduce(PK::LayoutItem1P2, 1usize)]),
+        _ => vec![],
+    }
+}
+fn action_comment_s140(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::STOP => Vec::from(&[Reduce(PK::LayoutItemP2, 1usize)]),
+        TK::WS => Vec::from(&[Reduce(PK::LayoutItemP2, 1usize)]),
+        TK::CommentLine => Vec::from(&[Reduce(PK::LayoutItemP2, 1usize)]),
+        TK::START_COMMENT => Vec::from(&[Reduce(PK::LayoutItemP2, 1usize)]),
+        _ => vec![],
+    }
+}
+fn action_ws_s141(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::WS => Vec::from(&[Reduce(PK::CorncP3, 1usize)]),
+        TK::CommentLine => Vec::from(&[Reduce(PK::CorncP3, 1usize)]),
+        TK::NotComment => Vec::from(&[Reduce(PK::CorncP3, 1usize)]),
+        TK::START_COMMENT => Vec::from(&[Reduce(PK::CorncP3, 1usize)]),
+        TK::END_COMMENT => Vec::from(&[Reduce(PK::CorncP3, 1usize)]),
+        _ => vec![],
+    }
+}
+fn action_notcomment_s142(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::WS => Vec::from(&[Reduce(PK::CorncP2, 1usize)]),
+        TK::CommentLine => Vec::from(&[Reduce(PK::CorncP2, 1usize)]),
+        TK::NotComment => Vec::from(&[Reduce(PK::CorncP2, 1usize)]),
+        TK::START_COMMENT => Vec::from(&[Reduce(PK::CorncP2, 1usize)]),
+        TK::END_COMMENT => Vec::from(&[Reduce(PK::CorncP2, 1usize)]),
+        _ => vec![],
+    }
+}
+fn action_comment_s143(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::WS => Vec::from(&[Reduce(PK::CorncP1, 1usize)]),
+        TK::CommentLine => Vec::from(&[Reduce(PK::CorncP1, 1usize)]),
+        TK::NotComment => Vec::from(&[Reduce(PK::CorncP1, 1usize)]),
+        TK::START_COMMENT => Vec::from(&[Reduce(PK::CorncP1, 1usize)]),
+        TK::END_COMMENT => Vec::from(&[Reduce(PK::CorncP1, 1usize)]),
+        _ => vec![],
+    }
+}
+fn action_corncs_s144(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::END_COMMENT => Vec::from(&[Shift(State::END_COMMENTS149)]),
+        _ => vec![],
+    }
+}
+fn action_cornc1_s145(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::WS => Vec::from(&[Shift(State::WSS141)]),
+        TK::CommentLine => Vec::from(&[Shift(State::CommentLineS134)]),
+        TK::NotComment => Vec::from(&[Shift(State::NotCommentS142)]),
+        TK::START_COMMENT => Vec::from(&[Shift(State::START_COMMENTS135)]),
+        TK::END_COMMENT => Vec::from(&[Reduce(PK::Cornc0P1, 1usize)]),
+        _ => vec![],
+    }
+}
+fn action_cornc0_s146(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::END_COMMENT => Vec::from(&[Reduce(PK::CorncsP1, 1usize)]),
+        _ => vec![],
+    }
+}
+fn action_cornc_s147(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::WS => Vec::from(&[Reduce(PK::Cornc1P2, 1usize)]),
+        TK::CommentLine => Vec::from(&[Reduce(PK::Cornc1P2, 1usize)]),
+        TK::NotComment => Vec::from(&[Reduce(PK::Cornc1P2, 1usize)]),
+        TK::START_COMMENT => Vec::from(&[Reduce(PK::Cornc1P2, 1usize)]),
+        TK::END_COMMENT => Vec::from(&[Reduce(PK::Cornc1P2, 1usize)]),
+        _ => vec![],
+    }
+}
+fn action_layoutitem_s148(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::STOP => Vec::from(&[Reduce(PK::LayoutItem1P1, 2usize)]),
+        TK::WS => Vec::from(&[Reduce(PK::LayoutItem1P1, 2usize)]),
+        TK::CommentLine => Vec::from(&[Reduce(PK::LayoutItem1P1, 2usize)]),
+        TK::START_COMMENT => Vec::from(&[Reduce(PK::LayoutItem1P1, 2usize)]),
+        _ => vec![],
+    }
+}
+fn action_end_comment_s149(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::STOP => Vec::from(&[Reduce(PK::CommentP1, 3usize)]),
+        TK::WS => Vec::from(&[Reduce(PK::CommentP1, 3usize)]),
+        TK::CommentLine => Vec::from(&[Reduce(PK::CommentP1, 3usize)]),
+        TK::NotComment => Vec::from(&[Reduce(PK::CommentP1, 3usize)]),
+        TK::START_COMMENT => Vec::from(&[Reduce(PK::CommentP1, 3usize)]),
+        TK::END_COMMENT => Vec::from(&[Reduce(PK::CommentP1, 3usize)]),
+        _ => vec![],
+    }
+}
+fn action_cornc_s150(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::WS => Vec::from(&[Reduce(PK::Cornc1P1, 2usize)]),
+        TK::CommentLine => Vec::from(&[Reduce(PK::Cornc1P1, 2usize)]),
+        TK::NotComment => Vec::from(&[Reduce(PK::Cornc1P1, 2usize)]),
+        TK::START_COMMENT => Vec::from(&[Reduce(PK::Cornc1P1, 2usize)]),
+        TK::END_COMMENT => Vec::from(&[Reduce(PK::Cornc1P1, 2usize)]),
         _ => vec![],
     }
 }
@@ -1485,8 +2463,8 @@ fn goto_close_arrow_s62(nonterm_kind: NonTermKind) -> State {
 }
 fn goto_colon_s68(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
-        NonTermKind::TypeSpec => State::TypeSpecS73,
-        NonTermKind::SimpleType => State::SimpleTypeS74,
+        NonTermKind::TypeSpec => State::TypeSpecS75,
+        NonTermKind::SimpleType => State::SimpleTypeS76,
         _ => {
             panic!(
                 "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
@@ -1495,25 +2473,330 @@ fn goto_colon_s68(nonterm_kind: NonTermKind) -> State {
         }
     }
 }
-fn goto_typespec_s73(nonterm_kind: NonTermKind) -> State {
+fn goto_integer_name_s70(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
-        NonTermKind::CardOpt => State::CardOptS79,
-        NonTermKind::Card => State::CardS80,
+        NonTermKind::CardOpt => State::CardOptS81,
+        NonTermKind::Card => State::CardS82,
         _ => {
             panic!(
                 "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
-                State::TypeSpecS73
+                State::INTEGER_NAMES70
             )
         }
     }
 }
-fn goto_comma_s82(nonterm_kind: NonTermKind) -> State {
+fn goto_string_name_s71(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
-        NonTermKind::Max => State::MaxS85,
+        NonTermKind::CardOpt => State::CardOptS83,
+        NonTermKind::Card => State::CardS82,
         _ => {
             panic!(
                 "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
-                State::COMMAS82
+                State::STRING_NAMES71
+            )
+        }
+    }
+}
+fn goto_date_name_s72(nonterm_kind: NonTermKind) -> State {
+    match nonterm_kind {
+        NonTermKind::CardOpt => State::CardOptS84,
+        NonTermKind::Card => State::CardS82,
+        _ => {
+            panic!(
+                "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
+                State::DATE_NAMES72
+            )
+        }
+    }
+}
+fn goto_check_s73(nonterm_kind: NonTermKind) -> State {
+    match nonterm_kind {
+        NonTermKind::Cond => State::CondS95,
+        _ => {
+            panic!(
+                "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
+                State::CHECKS73
+            )
+        }
+    }
+}
+fn goto_any_s74(nonterm_kind: NonTermKind) -> State {
+    match nonterm_kind {
+        NonTermKind::CheckOpt => State::CheckOptS97,
+        NonTermKind::Check => State::CheckS98,
+        _ => {
+            panic!(
+                "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
+                State::ANYS74
+            )
+        }
+    }
+}
+fn goto_simpletype_s76(nonterm_kind: NonTermKind) -> State {
+    match nonterm_kind {
+        NonTermKind::MoreTypesOpt => State::MoreTypesOptS101,
+        NonTermKind::MoreTypes => State::MoreTypesS102,
+        _ => {
+            panic!(
+                "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
+                State::SimpleTypeS76
+            )
+        }
+    }
+}
+fn goto_cardopt_s81(nonterm_kind: NonTermKind) -> State {
+    match nonterm_kind {
+        NonTermKind::CheckOpt => State::CheckOptS104,
+        NonTermKind::Check => State::CheckS98,
+        _ => {
+            panic!(
+                "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
+                State::CardOptS81
+            )
+        }
+    }
+}
+fn goto_cardopt_s83(nonterm_kind: NonTermKind) -> State {
+    match nonterm_kind {
+        NonTermKind::CheckOpt => State::CheckOptS105,
+        NonTermKind::Check => State::CheckS98,
+        _ => {
+            panic!(
+                "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
+                State::CardOptS83
+            )
+        }
+    }
+}
+fn goto_cardopt_s84(nonterm_kind: NonTermKind) -> State {
+    match nonterm_kind {
+        NonTermKind::CheckOpt => State::CheckOptS106,
+        NonTermKind::Check => State::CheckS98,
+        _ => {
+            panic!(
+                "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
+                State::CardOptS84
+            )
+        }
+    }
+}
+fn goto_open_paren_s85(nonterm_kind: NonTermKind) -> State {
+    match nonterm_kind {
+        NonTermKind::Cond => State::CondS107,
+        _ => {
+            panic!(
+                "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
+                State::OPEN_PARENS85
+            )
+        }
+    }
+}
+fn goto_gt_s88(nonterm_kind: NonTermKind) -> State {
+    match nonterm_kind {
+        NonTermKind::SingleValue => State::SingleValueS110,
+        _ => {
+            panic!(
+                "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
+                State::GTS88
+            )
+        }
+    }
+}
+fn goto_lt_s89(nonterm_kind: NonTermKind) -> State {
+    match nonterm_kind {
+        NonTermKind::SingleValue => State::SingleValueS111,
+        _ => {
+            panic!(
+                "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
+                State::LTS89
+            )
+        }
+    }
+}
+fn goto_ge_s90(nonterm_kind: NonTermKind) -> State {
+    match nonterm_kind {
+        NonTermKind::SingleValue => State::SingleValueS112,
+        _ => {
+            panic!(
+                "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
+                State::GES90
+            )
+        }
+    }
+}
+fn goto_le_s91(nonterm_kind: NonTermKind) -> State {
+    match nonterm_kind {
+        NonTermKind::SingleValue => State::SingleValueS113,
+        _ => {
+            panic!(
+                "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
+                State::LES91
+            )
+        }
+    }
+}
+fn goto_equals_s92(nonterm_kind: NonTermKind) -> State {
+    match nonterm_kind {
+        NonTermKind::SingleValue => State::SingleValueS114,
+        _ => {
+            panic!(
+                "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
+                State::EQUALSS92
+            )
+        }
+    }
+}
+fn goto_not_s94(nonterm_kind: NonTermKind) -> State {
+    match nonterm_kind {
+        NonTermKind::Cond => State::CondS116,
+        _ => {
+            panic!(
+                "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
+                State::NOTS94
+            )
+        }
+    }
+}
+fn goto_check_s96(nonterm_kind: NonTermKind) -> State {
+    match nonterm_kind {
+        NonTermKind::Cond => State::CondS119,
+        _ => {
+            panic!(
+                "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
+                State::CHECKS96
+            )
+        }
+    }
+}
+fn goto_bar_s99(nonterm_kind: NonTermKind) -> State {
+    match nonterm_kind {
+        NonTermKind::SimpleType => State::SimpleTypeS120,
+        _ => {
+            panic!(
+                "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
+                State::BARS99
+            )
+        }
+    }
+}
+fn goto_ampersand_s100(nonterm_kind: NonTermKind) -> State {
+    match nonterm_kind {
+        NonTermKind::SimpleType => State::SimpleTypeS121,
+        _ => {
+            panic!(
+                "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
+                State::AMPERSANDS100
+            )
+        }
+    }
+}
+fn goto_and_s117(nonterm_kind: NonTermKind) -> State {
+    match nonterm_kind {
+        NonTermKind::Cond => State::CondS124,
+        _ => {
+            panic!(
+                "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
+                State::ANDS117
+            )
+        }
+    }
+}
+fn goto_or_s118(nonterm_kind: NonTermKind) -> State {
+    match nonterm_kind {
+        NonTermKind::Cond => State::CondS125,
+        _ => {
+            panic!(
+                "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
+                State::ORS118
+            )
+        }
+    }
+}
+fn goto_simpletype_s120(nonterm_kind: NonTermKind) -> State {
+    match nonterm_kind {
+        NonTermKind::MoreTypesOpt => State::MoreTypesOptS126,
+        NonTermKind::MoreTypes => State::MoreTypesS102,
+        _ => {
+            panic!(
+                "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
+                State::SimpleTypeS120
+            )
+        }
+    }
+}
+fn goto_simpletype_s121(nonterm_kind: NonTermKind) -> State {
+    match nonterm_kind {
+        NonTermKind::MoreTypesOpt => State::MoreTypesOptS127,
+        NonTermKind::MoreTypes => State::MoreTypesS102,
+        _ => {
+            panic!(
+                "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
+                State::SimpleTypeS121
+            )
+        }
+    }
+}
+fn goto_comma_s122(nonterm_kind: NonTermKind) -> State {
+    match nonterm_kind {
+        NonTermKind::Max => State::MaxS130,
+        _ => {
+            panic!(
+                "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
+                State::COMMAS122
+            )
+        }
+    }
+}
+fn goto_augl_s132(nonterm_kind: NonTermKind) -> State {
+    match nonterm_kind {
+        NonTermKind::Layout => State::LayoutS136,
+        NonTermKind::LayoutItem1 => State::LayoutItem1S137,
+        NonTermKind::LayoutItem0 => State::LayoutItem0S138,
+        NonTermKind::LayoutItem => State::LayoutItemS139,
+        NonTermKind::Comment => State::CommentS140,
+        _ => {
+            panic!(
+                "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
+                State::AUGLS132
+            )
+        }
+    }
+}
+fn goto_start_comment_s135(nonterm_kind: NonTermKind) -> State {
+    match nonterm_kind {
+        NonTermKind::Comment => State::CommentS143,
+        NonTermKind::Corncs => State::CorncsS144,
+        NonTermKind::Cornc1 => State::Cornc1S145,
+        NonTermKind::Cornc0 => State::Cornc0S146,
+        NonTermKind::Cornc => State::CorncS147,
+        _ => {
+            panic!(
+                "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
+                State::START_COMMENTS135
+            )
+        }
+    }
+}
+fn goto_layoutitem1_s137(nonterm_kind: NonTermKind) -> State {
+    match nonterm_kind {
+        NonTermKind::LayoutItem => State::LayoutItemS148,
+        NonTermKind::Comment => State::CommentS140,
+        _ => {
+            panic!(
+                "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
+                State::LayoutItem1S137
+            )
+        }
+    }
+}
+fn goto_cornc1_s145(nonterm_kind: NonTermKind) -> State {
+    match nonterm_kind {
+        NonTermKind::Comment => State::CommentS143,
+        NonTermKind::Cornc => State::CorncS150,
+        _ => {
+            panic!(
+                "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
+                State::Cornc1S145
             )
         }
     }
@@ -1596,20 +2879,84 @@ pub(crate) static PARSER_DEFINITION: PgsParserDefinition = PgsParserDefinition {
         action_integer_name_s70,
         action_string_name_s71,
         action_date_name_s72,
-        action_typespec_s73,
-        action_simpletype_s74,
-        action_open_curly_s75,
-        action_plus_s76,
-        action_star_s77,
-        action_question_s78,
-        action_cardopt_s79,
-        action_card_s80,
-        action_number_s81,
-        action_comma_s82,
-        action_star_s83,
-        action_number_s84,
-        action_max_s85,
-        action_close_curly_s86,
+        action_check_s73,
+        action_any_s74,
+        action_typespec_s75,
+        action_simpletype_s76,
+        action_open_curly_s77,
+        action_plus_s78,
+        action_star_s79,
+        action_question_s80,
+        action_cardopt_s81,
+        action_card_s82,
+        action_cardopt_s83,
+        action_cardopt_s84,
+        action_open_paren_s85,
+        action_true_s86,
+        action_false_s87,
+        action_gt_s88,
+        action_lt_s89,
+        action_ge_s90,
+        action_le_s91,
+        action_equals_s92,
+        action_regex_s93,
+        action_not_s94,
+        action_cond_s95,
+        action_check_s96,
+        action_checkopt_s97,
+        action_check_s98,
+        action_bar_s99,
+        action_ampersand_s100,
+        action_moretypesopt_s101,
+        action_moretypes_s102,
+        action_number_s103,
+        action_checkopt_s104,
+        action_checkopt_s105,
+        action_checkopt_s106,
+        action_cond_s107,
+        action_number_s108,
+        action_quoted_string_s109,
+        action_singlevalue_s110,
+        action_singlevalue_s111,
+        action_singlevalue_s112,
+        action_singlevalue_s113,
+        action_singlevalue_s114,
+        action_quoted_string_s115,
+        action_cond_s116,
+        action_and_s117,
+        action_or_s118,
+        action_cond_s119,
+        action_simpletype_s120,
+        action_simpletype_s121,
+        action_comma_s122,
+        action_close_paren_s123,
+        action_cond_s124,
+        action_cond_s125,
+        action_moretypesopt_s126,
+        action_moretypesopt_s127,
+        action_star_s128,
+        action_number_s129,
+        action_max_s130,
+        action_close_curly_s131,
+        action_augl_s132,
+        action_ws_s133,
+        action_commentline_s134,
+        action_start_comment_s135,
+        action_layout_s136,
+        action_layoutitem1_s137,
+        action_layoutitem0_s138,
+        action_layoutitem_s139,
+        action_comment_s140,
+        action_ws_s141,
+        action_notcomment_s142,
+        action_comment_s143,
+        action_corncs_s144,
+        action_cornc1_s145,
+        action_cornc0_s146,
+        action_cornc_s147,
+        action_layoutitem_s148,
+        action_end_comment_s149,
+        action_cornc_s150,
     ],
     gotos: [
         goto_aug_s0,
@@ -1682,10 +3029,37 @@ pub(crate) static PARSER_DEFINITION: PgsParserDefinition = PgsParserDefinition {
         goto_invalid,
         goto_colon_s68,
         goto_invalid,
+        goto_integer_name_s70,
+        goto_string_name_s71,
+        goto_date_name_s72,
+        goto_check_s73,
+        goto_any_s74,
+        goto_invalid,
+        goto_simpletype_s76,
         goto_invalid,
         goto_invalid,
         goto_invalid,
-        goto_typespec_s73,
+        goto_invalid,
+        goto_cardopt_s81,
+        goto_invalid,
+        goto_cardopt_s83,
+        goto_cardopt_s84,
+        goto_open_paren_s85,
+        goto_invalid,
+        goto_invalid,
+        goto_gt_s88,
+        goto_lt_s89,
+        goto_ge_s90,
+        goto_le_s91,
+        goto_equals_s92,
+        goto_invalid,
+        goto_not_s94,
+        goto_invalid,
+        goto_check_s96,
+        goto_invalid,
+        goto_invalid,
+        goto_bar_s99,
+        goto_ampersand_s100,
         goto_invalid,
         goto_invalid,
         goto_invalid,
@@ -1694,14 +3068,51 @@ pub(crate) static PARSER_DEFINITION: PgsParserDefinition = PgsParserDefinition {
         goto_invalid,
         goto_invalid,
         goto_invalid,
-        goto_comma_s82,
+        goto_invalid,
+        goto_invalid,
+        goto_invalid,
+        goto_invalid,
+        goto_invalid,
+        goto_invalid,
+        goto_invalid,
+        goto_invalid,
+        goto_and_s117,
+        goto_or_s118,
+        goto_invalid,
+        goto_simpletype_s120,
+        goto_simpletype_s121,
+        goto_comma_s122,
+        goto_invalid,
+        goto_invalid,
+        goto_invalid,
+        goto_invalid,
+        goto_invalid,
+        goto_invalid,
+        goto_invalid,
+        goto_invalid,
+        goto_invalid,
+        goto_augl_s132,
+        goto_invalid,
+        goto_invalid,
+        goto_start_comment_s135,
+        goto_invalid,
+        goto_layoutitem1_s137,
+        goto_invalid,
+        goto_invalid,
+        goto_invalid,
+        goto_invalid,
+        goto_invalid,
+        goto_invalid,
+        goto_invalid,
+        goto_cornc1_s145,
+        goto_invalid,
         goto_invalid,
         goto_invalid,
         goto_invalid,
         goto_invalid,
     ],
     token_kinds: [
-        [Some((TK::CREATE, true)), None, None, None, None, None, None, None],
+        [Some((TK::CREATE, true)), None, None, None, None, None, None, None, None, None],
         [
             Some((TK::GRAPH, true)),
             Some((TK::NODE, true)),
@@ -1711,21 +3122,15 @@ pub(crate) static PARSER_DEFINITION: PgsParserDefinition = PgsParserDefinition {
             None,
             None,
             None,
+            None,
+            None,
         ],
-        [Some((TK::STOP, false)), None, None, None, None, None, None, None],
+        [Some((TK::STOP, false)), None, None, None, None, None, None, None, None, None],
         [
             Some((TK::STOP, true)),
             Some((TK::SEMICOLON, true)),
             None,
             None,
-            None,
-            None,
-            None,
-            None,
-        ],
-        [
-            Some((TK::STOP, true)),
-            Some((TK::SEMICOLON, true)),
             None,
             None,
             None,
@@ -1742,14 +3147,6 @@ pub(crate) static PARSER_DEFINITION: PgsParserDefinition = PgsParserDefinition {
             None,
             None,
             None,
-        ],
-        [
-            Some((TK::STOP, true)),
-            Some((TK::SEMICOLON, true)),
-            None,
-            None,
-            None,
-            None,
             None,
             None,
         ],
@@ -1762,14 +3159,9 @@ pub(crate) static PARSER_DEFINITION: PgsParserDefinition = PgsParserDefinition {
             None,
             None,
             None,
+            None,
+            None,
         ],
-        [Some((TK::TYPE, true)), None, None, None, None, None, None, None],
-        [Some((TK::TYPE, true)), None, None, None, None, None, None, None],
-        [Some((TK::TYPE, true)), None, None, None, None, None, None, None],
-        [Some((TK::CREATE, true)), None, None, None, None, None, None, None],
-        [Some((TK::OPEN_PAREN, true)), None, None, None, None, None, None, None],
-        [Some((TK::OPEN_PAREN, true)), None, None, None, None, None, None, None],
-        [Some((TK::IDENTIFIER, false)), None, None, None, None, None, None, None],
         [
             Some((TK::STOP, true)),
             Some((TK::SEMICOLON, true)),
@@ -1779,11 +3171,90 @@ pub(crate) static PARSER_DEFINITION: PgsParserDefinition = PgsParserDefinition {
             None,
             None,
             None,
+            None,
+            None,
         ],
-        [Some((TK::IDENTIFIER, false)), None, None, None, None, None, None, None],
         [
             Some((TK::STOP, true)),
             Some((TK::SEMICOLON, true)),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
+        [Some((TK::TYPE, true)), None, None, None, None, None, None, None, None, None],
+        [Some((TK::TYPE, true)), None, None, None, None, None, None, None, None, None],
+        [Some((TK::TYPE, true)), None, None, None, None, None, None, None, None, None],
+        [Some((TK::CREATE, true)), None, None, None, None, None, None, None, None, None],
+        [
+            Some((TK::OPEN_PAREN, true)),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::OPEN_PAREN, true)),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::IDENTIFIER, false)),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::STOP, true)),
+            Some((TK::SEMICOLON, true)),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::IDENTIFIER, false)),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::STOP, true)),
+            Some((TK::SEMICOLON, true)),
+            None,
+            None,
             None,
             None,
             None,
@@ -1800,6 +3271,8 @@ pub(crate) static PARSER_DEFINITION: PgsParserDefinition = PgsParserDefinition {
             None,
             None,
             None,
+            None,
+            None,
         ],
         [
             Some((TK::STOP, true)),
@@ -1810,8 +3283,21 @@ pub(crate) static PARSER_DEFINITION: PgsParserDefinition = PgsParserDefinition {
             None,
             None,
             None,
+            None,
+            None,
         ],
-        [Some((TK::OPEN_ARROW, true)), None, None, None, None, None, None, None],
+        [
+            Some((TK::OPEN_ARROW, true)),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
         [
             Some((TK::CLOSE_ARROW, true)),
             Some((TK::CLOSE_PAREN, true)),
@@ -1821,6 +3307,8 @@ pub(crate) static PARSER_DEFINITION: PgsParserDefinition = PgsParserDefinition {
             None,
             None,
             None,
+            None,
+            None,
         ],
         [
             Some((TK::STOP, true)),
@@ -1831,12 +3319,27 @@ pub(crate) static PARSER_DEFINITION: PgsParserDefinition = PgsParserDefinition {
             None,
             None,
             None,
+            None,
+            None,
         ],
-        [Some((TK::OPEN_CURLY, true)), None, None, None, None, None, None, None],
+        [
+            Some((TK::OPEN_CURLY, true)),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
         [
             Some((TK::CLOSE_PAREN, true)),
             Some((TK::OPEN_CURLY, true)),
             Some((TK::COLON, true)),
+            None,
+            None,
             None,
             None,
             None,
@@ -1852,8 +3355,21 @@ pub(crate) static PARSER_DEFINITION: PgsParserDefinition = PgsParserDefinition {
             None,
             None,
             None,
+            None,
+            None,
         ],
-        [Some((TK::CLOSE_PAREN, true)), None, None, None, None, None, None, None],
+        [
+            Some((TK::CLOSE_PAREN, true)),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
         [
             Some((TK::CLOSE_ARROW, true)),
             Some((TK::CLOSE_PAREN, true)),
@@ -1863,6 +3379,8 @@ pub(crate) static PARSER_DEFINITION: PgsParserDefinition = PgsParserDefinition {
             None,
             None,
             None,
+            None,
+            None,
         ],
         [
             Some((TK::CLOSE_ARROW, true)),
@@ -1873,10 +3391,45 @@ pub(crate) static PARSER_DEFINITION: PgsParserDefinition = PgsParserDefinition {
             None,
             None,
             None,
+            None,
+            None,
         ],
-        [Some((TK::IDENTIFIER, false)), None, None, None, None, None, None, None],
-        [Some((TK::CLOSE_CURLY, true)), None, None, None, None, None, None, None],
-        [Some((TK::CLOSE_PAREN, true)), None, None, None, None, None, None, None],
+        [
+            Some((TK::IDENTIFIER, false)),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::CLOSE_CURLY, true)),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::CLOSE_PAREN, true)),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
         [
             Some((TK::CLOSE_ARROW, true)),
             Some((TK::CLOSE_PAREN, true)),
@@ -1886,12 +3439,27 @@ pub(crate) static PARSER_DEFINITION: PgsParserDefinition = PgsParserDefinition {
             None,
             None,
             None,
+            None,
+            None,
         ],
-        [Some((TK::IDENTIFIER, false)), None, None, None, None, None, None, None],
+        [
+            Some((TK::IDENTIFIER, false)),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
         [
             Some((TK::CLOSE_ARROW, true)),
             Some((TK::CLOSE_PAREN, true)),
             Some((TK::OPEN_CURLY, true)),
+            None,
+            None,
             None,
             None,
             None,
@@ -1904,6 +3472,8 @@ pub(crate) static PARSER_DEFINITION: PgsParserDefinition = PgsParserDefinition {
             Some((TK::OPEN_CURLY, true)),
             Some((TK::BAR, true)),
             Some((TK::AMPERSAND, true)),
+            None,
+            None,
             None,
             None,
             None,
@@ -1917,6 +3487,8 @@ pub(crate) static PARSER_DEFINITION: PgsParserDefinition = PgsParserDefinition {
             None,
             None,
             None,
+            None,
+            None,
         ],
         [
             Some((TK::OPTIONAL, true)),
@@ -1927,20 +3499,26 @@ pub(crate) static PARSER_DEFINITION: PgsParserDefinition = PgsParserDefinition {
             None,
             None,
             None,
-        ],
-        [
-            Some((TK::CLOSE_ARROW, true)),
-            Some((TK::CLOSE_PAREN, true)),
-            None,
-            None,
-            None,
-            None,
             None,
             None,
         ],
         [
             Some((TK::CLOSE_ARROW, true)),
             Some((TK::CLOSE_PAREN, true)),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::CLOSE_ARROW, true)),
+            Some((TK::CLOSE_PAREN, true)),
+            None,
+            None,
             None,
             None,
             None,
@@ -1957,20 +3535,26 @@ pub(crate) static PARSER_DEFINITION: PgsParserDefinition = PgsParserDefinition {
             None,
             None,
             None,
-        ],
-        [
-            Some((TK::STOP, true)),
-            Some((TK::SEMICOLON, true)),
-            None,
-            None,
-            None,
-            None,
             None,
             None,
         ],
         [
             Some((TK::STOP, true)),
             Some((TK::SEMICOLON, true)),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::STOP, true)),
+            Some((TK::SEMICOLON, true)),
+            None,
+            None,
             None,
             None,
             None,
@@ -1984,6 +3568,8 @@ pub(crate) static PARSER_DEFINITION: PgsParserDefinition = PgsParserDefinition {
             Some((TK::OPEN_CURLY, true)),
             Some((TK::BAR, true)),
             Some((TK::AMPERSAND, true)),
+            None,
+            None,
             None,
             None,
             None,
@@ -1997,6 +3583,8 @@ pub(crate) static PARSER_DEFINITION: PgsParserDefinition = PgsParserDefinition {
             None,
             None,
             None,
+            None,
+            None,
         ],
         [
             Some((TK::AT, true)),
@@ -2007,14 +3595,6 @@ pub(crate) static PARSER_DEFINITION: PgsParserDefinition = PgsParserDefinition {
             None,
             None,
             None,
-        ],
-        [
-            Some((TK::CLOSE_ARROW, true)),
-            Some((TK::CLOSE_PAREN, true)),
-            Some((TK::OPEN_CURLY, true)),
-            None,
-            None,
-            None,
             None,
             None,
         ],
@@ -2022,6 +3602,20 @@ pub(crate) static PARSER_DEFINITION: PgsParserDefinition = PgsParserDefinition {
             Some((TK::CLOSE_ARROW, true)),
             Some((TK::CLOSE_PAREN, true)),
             Some((TK::OPEN_CURLY, true)),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::CLOSE_ARROW, true)),
+            Some((TK::CLOSE_PAREN, true)),
+            Some((TK::OPEN_CURLY, true)),
+            None,
+            None,
             None,
             None,
             None,
@@ -2037,8 +3631,21 @@ pub(crate) static PARSER_DEFINITION: PgsParserDefinition = PgsParserDefinition {
             None,
             None,
             None,
+            None,
+            None,
         ],
-        [Some((TK::IDENTIFIER, false)), None, None, None, None, None, None, None],
+        [
+            Some((TK::IDENTIFIER, false)),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
         [
             Some((TK::CLOSE_CURLY, true)),
             Some((TK::COMMA, true)),
@@ -2048,9 +3655,33 @@ pub(crate) static PARSER_DEFINITION: PgsParserDefinition = PgsParserDefinition {
             None,
             None,
             None,
+            None,
+            None,
         ],
-        [Some((TK::IDENTIFIER, false)), None, None, None, None, None, None, None],
-        [Some((TK::CLOSE_ARROW, true)), None, None, None, None, None, None, None],
+        [
+            Some((TK::IDENTIFIER, false)),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::CLOSE_ARROW, true)),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
         [
             Some((TK::CLOSE_ARROW, true)),
             Some((TK::CLOSE_PAREN, true)),
@@ -2060,6 +3691,8 @@ pub(crate) static PARSER_DEFINITION: PgsParserDefinition = PgsParserDefinition {
             None,
             None,
             None,
+            None,
+            None,
         ],
         [
             Some((TK::CLOSE_ARROW, true)),
@@ -2070,6 +3703,8 @@ pub(crate) static PARSER_DEFINITION: PgsParserDefinition = PgsParserDefinition {
             None,
             None,
             None,
+            None,
+            None,
         ],
         [
             Some((TK::CLOSE_PAREN, true)),
@@ -2080,10 +3715,14 @@ pub(crate) static PARSER_DEFINITION: PgsParserDefinition = PgsParserDefinition {
             None,
             None,
             None,
+            None,
+            None,
         ],
         [
             Some((TK::CLOSE_ARROW, true)),
             Some((TK::CLOSE_PAREN, true)),
+            None,
+            None,
             None,
             None,
             None,
@@ -2100,6 +3739,8 @@ pub(crate) static PARSER_DEFINITION: PgsParserDefinition = PgsParserDefinition {
             None,
             None,
             None,
+            None,
+            None,
         ],
         [
             Some((TK::OPTIONAL, true)),
@@ -2110,8 +3751,10 @@ pub(crate) static PARSER_DEFINITION: PgsParserDefinition = PgsParserDefinition {
             None,
             None,
             None,
+            None,
+            None,
         ],
-        [Some((TK::COLON, true)), None, None, None, None, None, None, None],
+        [Some((TK::COLON, true)), None, None, None, None, None, None, None, None, None],
         [
             Some((TK::CLOSE_PAREN, true)),
             Some((TK::CLOSE_CURLY, true)),
@@ -2121,9 +3764,22 @@ pub(crate) static PARSER_DEFINITION: PgsParserDefinition = PgsParserDefinition {
             None,
             None,
             None,
+            None,
+            None,
         ],
-        [Some((TK::COLON, true)), None, None, None, None, None, None, None],
-        [Some((TK::OPEN_PAREN, true)), None, None, None, None, None, None, None],
+        [Some((TK::COLON, true)), None, None, None, None, None, None, None, None, None],
+        [
+            Some((TK::OPEN_PAREN, true)),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
         [
             Some((TK::CLOSE_ARROW, true)),
             Some((TK::CLOSE_PAREN, true)),
@@ -2133,6 +3789,8 @@ pub(crate) static PARSER_DEFINITION: PgsParserDefinition = PgsParserDefinition {
             None,
             None,
             None,
+            None,
+            None,
         ],
         [
             Some((TK::CLOSE_ARROW, true)),
@@ -2143,14 +3801,6 @@ pub(crate) static PARSER_DEFINITION: PgsParserDefinition = PgsParserDefinition {
             None,
             None,
             None,
-        ],
-        [
-            Some((TK::CLOSE_PAREN, true)),
-            Some((TK::CLOSE_CURLY, true)),
-            Some((TK::COMMA, true)),
-            Some((TK::BAR, true)),
-            None,
-            None,
             None,
             None,
         ],
@@ -2163,12 +3813,28 @@ pub(crate) static PARSER_DEFINITION: PgsParserDefinition = PgsParserDefinition {
             None,
             None,
             None,
+            None,
+            None,
         ],
         [
             Some((TK::CLOSE_PAREN, true)),
             Some((TK::CLOSE_CURLY, true)),
             Some((TK::COMMA, true)),
             Some((TK::BAR, true)),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::CLOSE_PAREN, true)),
+            Some((TK::CLOSE_CURLY, true)),
+            Some((TK::COMMA, true)),
+            Some((TK::BAR, true)),
+            None,
+            None,
             None,
             None,
             None,
@@ -2177,7 +3843,9 @@ pub(crate) static PARSER_DEFINITION: PgsParserDefinition = PgsParserDefinition {
         [
             Some((TK::INTEGER_NAME, true)),
             Some((TK::STRING_NAME, true)),
+            Some((TK::CHECK, true)),
             Some((TK::DATE_NAME, true)),
+            Some((TK::ANY, true)),
             None,
             None,
             None,
@@ -2193,8 +3861,11 @@ pub(crate) static PARSER_DEFINITION: PgsParserDefinition = PgsParserDefinition {
             None,
             None,
             None,
+            None,
+            None,
         ],
         [
+            Some((TK::CHECK, true)),
             Some((TK::CLOSE_PAREN, true)),
             Some((TK::OPEN_CURLY, true)),
             Some((TK::CLOSE_CURLY, true)),
@@ -2203,8 +3874,10 @@ pub(crate) static PARSER_DEFINITION: PgsParserDefinition = PgsParserDefinition {
             Some((TK::PLUS, true)),
             Some((TK::STAR, true)),
             Some((TK::QUESTION, true)),
+            Some((TK::AMPERSAND, true)),
         ],
         [
+            Some((TK::CHECK, true)),
             Some((TK::CLOSE_PAREN, true)),
             Some((TK::OPEN_CURLY, true)),
             Some((TK::CLOSE_CURLY, true)),
@@ -2213,8 +3886,10 @@ pub(crate) static PARSER_DEFINITION: PgsParserDefinition = PgsParserDefinition {
             Some((TK::PLUS, true)),
             Some((TK::STAR, true)),
             Some((TK::QUESTION, true)),
+            Some((TK::AMPERSAND, true)),
         ],
         [
+            Some((TK::CHECK, true)),
             Some((TK::CLOSE_PAREN, true)),
             Some((TK::OPEN_CURLY, true)),
             Some((TK::CLOSE_CURLY, true)),
@@ -2223,64 +3898,629 @@ pub(crate) static PARSER_DEFINITION: PgsParserDefinition = PgsParserDefinition {
             Some((TK::PLUS, true)),
             Some((TK::STAR, true)),
             Some((TK::QUESTION, true)),
+            Some((TK::AMPERSAND, true)),
         ],
         [
+            Some((TK::FALSE, true)),
+            Some((TK::REGEX, true)),
+            Some((TK::TRUE, true)),
+            Some((TK::NOT, true)),
+            Some((TK::GE, true)),
+            Some((TK::LE, true)),
+            Some((TK::OPEN_PAREN, true)),
+            Some((TK::GT, true)),
+            Some((TK::LT, true)),
+            Some((TK::EQUALS, true)),
+        ],
+        [
+            Some((TK::CHECK, true)),
             Some((TK::CLOSE_PAREN, true)),
-            Some((TK::OPEN_CURLY, true)),
             Some((TK::CLOSE_CURLY, true)),
             Some((TK::COMMA, true)),
             Some((TK::BAR, true)),
-            Some((TK::PLUS, true)),
+            Some((TK::AMPERSAND, true)),
+            None,
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::CLOSE_PAREN, true)),
+            Some((TK::CLOSE_CURLY, true)),
+            Some((TK::COMMA, true)),
+            Some((TK::BAR, true)),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::CLOSE_PAREN, true)),
+            Some((TK::CLOSE_CURLY, true)),
+            Some((TK::COMMA, true)),
+            Some((TK::BAR, true)),
+            Some((TK::AMPERSAND, true)),
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::NUMBER, false)),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::CHECK, true)),
+            Some((TK::CLOSE_PAREN, true)),
+            Some((TK::CLOSE_CURLY, true)),
+            Some((TK::COMMA, true)),
+            Some((TK::BAR, true)),
+            Some((TK::AMPERSAND, true)),
+            None,
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::CHECK, true)),
+            Some((TK::CLOSE_PAREN, true)),
+            Some((TK::CLOSE_CURLY, true)),
+            Some((TK::COMMA, true)),
+            Some((TK::BAR, true)),
+            Some((TK::AMPERSAND, true)),
+            None,
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::CHECK, true)),
+            Some((TK::CLOSE_PAREN, true)),
+            Some((TK::CLOSE_CURLY, true)),
+            Some((TK::COMMA, true)),
+            Some((TK::BAR, true)),
+            Some((TK::AMPERSAND, true)),
+            None,
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::CHECK, true)),
+            Some((TK::CLOSE_PAREN, true)),
+            Some((TK::CLOSE_CURLY, true)),
+            Some((TK::COMMA, true)),
+            Some((TK::BAR, true)),
+            Some((TK::AMPERSAND, true)),
+            None,
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::CHECK, true)),
+            Some((TK::CLOSE_PAREN, true)),
+            Some((TK::CLOSE_CURLY, true)),
+            Some((TK::COMMA, true)),
+            Some((TK::BAR, true)),
+            Some((TK::AMPERSAND, true)),
+            None,
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::CHECK, true)),
+            Some((TK::CLOSE_PAREN, true)),
+            Some((TK::CLOSE_CURLY, true)),
+            Some((TK::COMMA, true)),
+            Some((TK::BAR, true)),
+            Some((TK::AMPERSAND, true)),
+            None,
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::CHECK, true)),
+            Some((TK::CLOSE_PAREN, true)),
+            Some((TK::CLOSE_CURLY, true)),
+            Some((TK::COMMA, true)),
+            Some((TK::BAR, true)),
+            Some((TK::AMPERSAND, true)),
+            None,
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::FALSE, true)),
+            Some((TK::REGEX, true)),
+            Some((TK::TRUE, true)),
+            Some((TK::NOT, true)),
+            Some((TK::GE, true)),
+            Some((TK::LE, true)),
+            Some((TK::OPEN_PAREN, true)),
+            Some((TK::GT, true)),
+            Some((TK::LT, true)),
+            Some((TK::EQUALS, true)),
+        ],
+        [
+            Some((TK::AND, true)),
+            Some((TK::OR, true)),
+            Some((TK::CLOSE_PAREN, true)),
+            Some((TK::CLOSE_CURLY, true)),
+            Some((TK::COMMA, true)),
+            Some((TK::BAR, true)),
+            Some((TK::AMPERSAND, true)),
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::AND, true)),
+            Some((TK::OR, true)),
+            Some((TK::CLOSE_PAREN, true)),
+            Some((TK::CLOSE_CURLY, true)),
+            Some((TK::COMMA, true)),
+            Some((TK::BAR, true)),
+            Some((TK::AMPERSAND, true)),
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::NUMBER, false)),
+            Some((TK::QUOTED_STRING, false)),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::NUMBER, false)),
+            Some((TK::QUOTED_STRING, false)),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::NUMBER, false)),
+            Some((TK::QUOTED_STRING, false)),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::NUMBER, false)),
+            Some((TK::QUOTED_STRING, false)),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::NUMBER, false)),
+            Some((TK::QUOTED_STRING, false)),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::QUOTED_STRING, false)),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::FALSE, true)),
+            Some((TK::REGEX, true)),
+            Some((TK::TRUE, true)),
+            Some((TK::NOT, true)),
+            Some((TK::GE, true)),
+            Some((TK::LE, true)),
+            Some((TK::OPEN_PAREN, true)),
+            Some((TK::GT, true)),
+            Some((TK::LT, true)),
+            Some((TK::EQUALS, true)),
+        ],
+        [
+            Some((TK::AND, true)),
+            Some((TK::OR, true)),
+            Some((TK::CLOSE_PAREN, true)),
+            Some((TK::CLOSE_CURLY, true)),
+            Some((TK::COMMA, true)),
+            Some((TK::BAR, true)),
+            Some((TK::AMPERSAND, true)),
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::FALSE, true)),
+            Some((TK::REGEX, true)),
+            Some((TK::TRUE, true)),
+            Some((TK::NOT, true)),
+            Some((TK::GE, true)),
+            Some((TK::LE, true)),
+            Some((TK::OPEN_PAREN, true)),
+            Some((TK::GT, true)),
+            Some((TK::LT, true)),
+            Some((TK::EQUALS, true)),
+        ],
+        [
+            Some((TK::CLOSE_PAREN, true)),
+            Some((TK::CLOSE_CURLY, true)),
+            Some((TK::COMMA, true)),
+            Some((TK::BAR, true)),
+            Some((TK::AMPERSAND, true)),
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::CLOSE_PAREN, true)),
+            Some((TK::CLOSE_CURLY, true)),
+            Some((TK::COMMA, true)),
+            Some((TK::BAR, true)),
+            Some((TK::AMPERSAND, true)),
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::INTEGER_NAME, true)),
+            Some((TK::STRING_NAME, true)),
+            Some((TK::CHECK, true)),
+            Some((TK::DATE_NAME, true)),
+            Some((TK::ANY, true)),
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::INTEGER_NAME, true)),
+            Some((TK::STRING_NAME, true)),
+            Some((TK::CHECK, true)),
+            Some((TK::DATE_NAME, true)),
+            Some((TK::ANY, true)),
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::CLOSE_PAREN, true)),
+            Some((TK::CLOSE_CURLY, true)),
+            Some((TK::COMMA, true)),
+            Some((TK::BAR, true)),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::CLOSE_PAREN, true)),
+            Some((TK::CLOSE_CURLY, true)),
+            Some((TK::COMMA, true)),
+            Some((TK::BAR, true)),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
+        [Some((TK::COMMA, true)), None, None, None, None, None, None, None, None, None],
+        [
+            Some((TK::CLOSE_PAREN, true)),
+            Some((TK::CLOSE_CURLY, true)),
+            Some((TK::COMMA, true)),
+            Some((TK::BAR, true)),
+            Some((TK::AMPERSAND, true)),
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::CLOSE_PAREN, true)),
+            Some((TK::CLOSE_CURLY, true)),
+            Some((TK::COMMA, true)),
+            Some((TK::BAR, true)),
+            Some((TK::AMPERSAND, true)),
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::CLOSE_PAREN, true)),
+            Some((TK::CLOSE_CURLY, true)),
+            Some((TK::COMMA, true)),
+            Some((TK::BAR, true)),
+            Some((TK::AMPERSAND, true)),
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::AND, true)),
+            Some((TK::OR, true)),
+            Some((TK::CLOSE_PAREN, true)),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::AND, true)),
+            Some((TK::OR, true)),
+            Some((TK::CLOSE_PAREN, true)),
+            Some((TK::CLOSE_CURLY, true)),
+            Some((TK::COMMA, true)),
+            Some((TK::BAR, true)),
+            Some((TK::AMPERSAND, true)),
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::AND, true)),
+            Some((TK::OR, true)),
+            Some((TK::CLOSE_PAREN, true)),
+            Some((TK::CLOSE_CURLY, true)),
+            Some((TK::COMMA, true)),
+            Some((TK::BAR, true)),
+            Some((TK::AMPERSAND, true)),
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::AND, true)),
+            Some((TK::OR, true)),
+            Some((TK::CLOSE_PAREN, true)),
+            Some((TK::CLOSE_CURLY, true)),
+            Some((TK::COMMA, true)),
+            Some((TK::BAR, true)),
+            Some((TK::AMPERSAND, true)),
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::AND, true)),
+            Some((TK::OR, true)),
+            Some((TK::CLOSE_PAREN, true)),
+            Some((TK::CLOSE_CURLY, true)),
+            Some((TK::COMMA, true)),
+            Some((TK::BAR, true)),
+            Some((TK::AMPERSAND, true)),
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::AND, true)),
+            Some((TK::OR, true)),
+            Some((TK::CLOSE_PAREN, true)),
+            Some((TK::CLOSE_CURLY, true)),
+            Some((TK::COMMA, true)),
+            Some((TK::BAR, true)),
+            Some((TK::AMPERSAND, true)),
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::AND, true)),
+            Some((TK::OR, true)),
+            Some((TK::CLOSE_PAREN, true)),
+            Some((TK::CLOSE_CURLY, true)),
+            Some((TK::COMMA, true)),
+            Some((TK::BAR, true)),
+            Some((TK::AMPERSAND, true)),
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::AND, true)),
+            Some((TK::OR, true)),
+            Some((TK::CLOSE_PAREN, true)),
+            Some((TK::CLOSE_CURLY, true)),
+            Some((TK::COMMA, true)),
+            Some((TK::BAR, true)),
+            Some((TK::AMPERSAND, true)),
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::AND, true)),
+            Some((TK::OR, true)),
+            Some((TK::CLOSE_PAREN, true)),
+            Some((TK::CLOSE_CURLY, true)),
+            Some((TK::COMMA, true)),
+            Some((TK::BAR, true)),
+            Some((TK::AMPERSAND, true)),
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::AND, true)),
+            Some((TK::OR, true)),
+            Some((TK::CLOSE_PAREN, true)),
+            Some((TK::CLOSE_CURLY, true)),
+            Some((TK::COMMA, true)),
+            Some((TK::BAR, true)),
+            Some((TK::AMPERSAND, true)),
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::FALSE, true)),
+            Some((TK::REGEX, true)),
+            Some((TK::TRUE, true)),
+            Some((TK::NOT, true)),
+            Some((TK::GE, true)),
+            Some((TK::LE, true)),
+            Some((TK::OPEN_PAREN, true)),
+            Some((TK::GT, true)),
+            Some((TK::LT, true)),
+            Some((TK::EQUALS, true)),
+        ],
+        [
+            Some((TK::FALSE, true)),
+            Some((TK::REGEX, true)),
+            Some((TK::TRUE, true)),
+            Some((TK::NOT, true)),
+            Some((TK::GE, true)),
+            Some((TK::LE, true)),
+            Some((TK::OPEN_PAREN, true)),
+            Some((TK::GT, true)),
+            Some((TK::LT, true)),
+            Some((TK::EQUALS, true)),
+        ],
+        [
+            Some((TK::AND, true)),
+            Some((TK::OR, true)),
+            Some((TK::CLOSE_PAREN, true)),
+            Some((TK::CLOSE_CURLY, true)),
+            Some((TK::COMMA, true)),
+            Some((TK::BAR, true)),
+            Some((TK::AMPERSAND, true)),
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::CLOSE_PAREN, true)),
+            Some((TK::CLOSE_CURLY, true)),
+            Some((TK::COMMA, true)),
+            Some((TK::BAR, true)),
+            Some((TK::AMPERSAND, true)),
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::CLOSE_PAREN, true)),
+            Some((TK::CLOSE_CURLY, true)),
+            Some((TK::COMMA, true)),
+            Some((TK::BAR, true)),
+            Some((TK::AMPERSAND, true)),
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
+        [
             Some((TK::STAR, true)),
-            Some((TK::QUESTION, true)),
-        ],
-        [
-            Some((TK::CLOSE_PAREN, true)),
-            Some((TK::OPEN_CURLY, true)),
-            Some((TK::CLOSE_CURLY, true)),
-            Some((TK::COMMA, true)),
-            Some((TK::BAR, true)),
-            Some((TK::PLUS, true)),
-            Some((TK::STAR, true)),
-            Some((TK::QUESTION, true)),
-        ],
-        [Some((TK::Number, false)), None, None, None, None, None, None, None],
-        [
-            Some((TK::CLOSE_PAREN, true)),
-            Some((TK::CLOSE_CURLY, true)),
-            Some((TK::COMMA, true)),
-            Some((TK::BAR, true)),
+            Some((TK::NUMBER, false)),
+            None,
+            None,
+            None,
+            None,
             None,
             None,
             None,
             None,
         ],
         [
+            Some((TK::AND, true)),
+            Some((TK::OR, true)),
             Some((TK::CLOSE_PAREN, true)),
             Some((TK::CLOSE_CURLY, true)),
             Some((TK::COMMA, true)),
             Some((TK::BAR, true)),
-            None,
+            Some((TK::AMPERSAND, true)),
             None,
             None,
             None,
         ],
         [
+            Some((TK::AND, true)),
+            Some((TK::OR, true)),
             Some((TK::CLOSE_PAREN, true)),
             Some((TK::CLOSE_CURLY, true)),
             Some((TK::COMMA, true)),
             Some((TK::BAR, true)),
-            None,
+            Some((TK::AMPERSAND, true)),
             None,
             None,
             None,
         ],
         [
+            Some((TK::AND, true)),
+            Some((TK::OR, true)),
             Some((TK::CLOSE_PAREN, true)),
             Some((TK::CLOSE_CURLY, true)),
             Some((TK::COMMA, true)),
             Some((TK::BAR, true)),
-            None,
+            Some((TK::AMPERSAND, true)),
             None,
             None,
             None,
@@ -2294,26 +4534,270 @@ pub(crate) static PARSER_DEFINITION: PgsParserDefinition = PgsParserDefinition {
             None,
             None,
             None,
-        ],
-        [Some((TK::COMMA, true)), None, None, None, None, None, None, None],
-        [
-            Some((TK::STAR, true)),
-            Some((TK::Number, false)),
-            None,
-            None,
-            None,
-            None,
             None,
             None,
         ],
-        [Some((TK::CLOSE_CURLY, true)), None, None, None, None, None, None, None],
-        [Some((TK::CLOSE_CURLY, true)), None, None, None, None, None, None, None],
-        [Some((TK::CLOSE_CURLY, true)), None, None, None, None, None, None, None],
         [
             Some((TK::CLOSE_PAREN, true)),
             Some((TK::CLOSE_CURLY, true)),
             Some((TK::COMMA, true)),
             Some((TK::BAR, true)),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::CLOSE_CURLY, true)),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::CLOSE_CURLY, true)),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::CLOSE_CURLY, true)),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::CHECK, true)),
+            Some((TK::CLOSE_PAREN, true)),
+            Some((TK::CLOSE_CURLY, true)),
+            Some((TK::COMMA, true)),
+            Some((TK::BAR, true)),
+            Some((TK::AMPERSAND, true)),
+            None,
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::STOP, true)),
+            Some((TK::START_COMMENT, true)),
+            Some((TK::WS, false)),
+            Some((TK::CommentLine, false)),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::STOP, true)),
+            Some((TK::START_COMMENT, true)),
+            Some((TK::WS, false)),
+            Some((TK::CommentLine, false)),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::STOP, true)),
+            Some((TK::START_COMMENT, true)),
+            Some((TK::END_COMMENT, true)),
+            Some((TK::WS, false)),
+            Some((TK::CommentLine, false)),
+            Some((TK::NotComment, false)),
+            None,
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::START_COMMENT, true)),
+            Some((TK::END_COMMENT, true)),
+            Some((TK::WS, false)),
+            Some((TK::CommentLine, false)),
+            Some((TK::NotComment, false)),
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
+        [Some((TK::STOP, false)), None, None, None, None, None, None, None, None, None],
+        [
+            Some((TK::STOP, true)),
+            Some((TK::START_COMMENT, true)),
+            Some((TK::WS, false)),
+            Some((TK::CommentLine, false)),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
+        [Some((TK::STOP, false)), None, None, None, None, None, None, None, None, None],
+        [
+            Some((TK::STOP, true)),
+            Some((TK::START_COMMENT, true)),
+            Some((TK::WS, false)),
+            Some((TK::CommentLine, false)),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::STOP, true)),
+            Some((TK::START_COMMENT, true)),
+            Some((TK::WS, false)),
+            Some((TK::CommentLine, false)),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::START_COMMENT, true)),
+            Some((TK::END_COMMENT, true)),
+            Some((TK::WS, false)),
+            Some((TK::CommentLine, false)),
+            Some((TK::NotComment, false)),
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::START_COMMENT, true)),
+            Some((TK::END_COMMENT, true)),
+            Some((TK::WS, false)),
+            Some((TK::CommentLine, false)),
+            Some((TK::NotComment, false)),
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::START_COMMENT, true)),
+            Some((TK::END_COMMENT, true)),
+            Some((TK::WS, false)),
+            Some((TK::CommentLine, false)),
+            Some((TK::NotComment, false)),
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::END_COMMENT, true)),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::START_COMMENT, true)),
+            Some((TK::END_COMMENT, true)),
+            Some((TK::WS, false)),
+            Some((TK::CommentLine, false)),
+            Some((TK::NotComment, false)),
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::END_COMMENT, true)),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::START_COMMENT, true)),
+            Some((TK::END_COMMENT, true)),
+            Some((TK::WS, false)),
+            Some((TK::CommentLine, false)),
+            Some((TK::NotComment, false)),
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::STOP, true)),
+            Some((TK::START_COMMENT, true)),
+            Some((TK::WS, false)),
+            Some((TK::CommentLine, false)),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::STOP, true)),
+            Some((TK::START_COMMENT, true)),
+            Some((TK::END_COMMENT, true)),
+            Some((TK::WS, false)),
+            Some((TK::CommentLine, false)),
+            Some((TK::NotComment, false)),
+            None,
+            None,
+            None,
+            None,
+        ],
+        [
+            Some((TK::START_COMMENT, true)),
+            Some((TK::END_COMMENT, true)),
+            Some((TK::WS, false)),
+            Some((TK::CommentLine, false)),
+            Some((TK::NotComment, false)),
+            None,
             None,
             None,
             None,
@@ -2373,8 +4857,8 @@ impl<
                 &PARSER_DEFINITION,
                 State::default(),
                 false,
-                false,
-                StringLexer::new(true, &RECOGNIZERS),
+                true,
+                StringLexer::new(false, &RECOGNIZERS),
                 DefaultBuilder::new(),
             ),
         )
@@ -2465,6 +4949,28 @@ impl<'i> TokenRecognizerT<'i> for TokenRecognizer {
 pub(crate) static RECOGNIZERS: [TokenRecognizer; TERMINAL_COUNT] = [
     TokenRecognizer(TokenKind::STOP, Recognizer::Stop),
     TokenRecognizer(
+        TokenKind::WS,
+        Recognizer::RegexMatch(
+            Lazy::new(|| { Regex::new(concat!("^", "\\s+")).unwrap() }),
+        ),
+    ),
+    TokenRecognizer(
+        TokenKind::CommentLine,
+        Recognizer::RegexMatch(
+            Lazy::new(|| { Regex::new(concat!("^", "//.*")).unwrap() }),
+        ),
+    ),
+    TokenRecognizer(
+        TokenKind::NotComment,
+        Recognizer::RegexMatch(
+            Lazy::new(|| {
+                Regex::new(concat!("^", "((\\*[^/])|[^\\s*/]|/[^\\*])+")).unwrap()
+            }),
+        ),
+    ),
+    TokenRecognizer(TokenKind::START_COMMENT, Recognizer::StrMatch("/*")),
+    TokenRecognizer(TokenKind::END_COMMENT, Recognizer::StrMatch("*/")),
+    TokenRecognizer(
         TokenKind::IDENTIFIER,
         Recognizer::RegexMatch(
             Lazy::new(|| { Regex::new(concat!("^", "[a-zA-Z_][0-9a-zA-Z_]*")).unwrap() }),
@@ -2492,7 +4998,7 @@ pub(crate) static RECOGNIZERS: [TokenRecognizer; TERMINAL_COUNT] = [
     TokenRecognizer(TokenKind::STRING_NAME, Recognizer::StrMatch("STRING")),
     TokenRecognizer(TokenKind::DATE_NAME, Recognizer::StrMatch("DATE")),
     TokenRecognizer(
-        TokenKind::Number,
+        TokenKind::NUMBER,
         Recognizer::RegexMatch(
             Lazy::new(|| { Regex::new(concat!("^", "\\d+")).unwrap() }),
         ),
@@ -2500,6 +5006,25 @@ pub(crate) static RECOGNIZERS: [TokenRecognizer; TERMINAL_COUNT] = [
     TokenRecognizer(TokenKind::OPTIONAL, Recognizer::StrMatch("OPTIONAL")),
     TokenRecognizer(TokenKind::AMPERSAND, Recognizer::StrMatch("&")),
     TokenRecognizer(TokenKind::AT, Recognizer::StrMatch("@")),
+    TokenRecognizer(TokenKind::CHECK, Recognizer::StrMatch("CHECK")),
+    TokenRecognizer(TokenKind::TRUE, Recognizer::StrMatch("TRUE")),
+    TokenRecognizer(TokenKind::FALSE, Recognizer::StrMatch("FALSE")),
+    TokenRecognizer(TokenKind::GT, Recognizer::StrMatch(">")),
+    TokenRecognizer(TokenKind::LT, Recognizer::StrMatch("<")),
+    TokenRecognizer(TokenKind::GE, Recognizer::StrMatch(">=")),
+    TokenRecognizer(TokenKind::LE, Recognizer::StrMatch("<=")),
+    TokenRecognizer(TokenKind::EQUALS, Recognizer::StrMatch("=")),
+    TokenRecognizer(
+        TokenKind::QUOTED_STRING,
+        Recognizer::RegexMatch(
+            Lazy::new(|| { Regex::new(concat!("^", "\"((\\\\\")|[^\"])*\"")).unwrap() }),
+        ),
+    ),
+    TokenRecognizer(TokenKind::REGEX, Recognizer::StrMatch("REGEX")),
+    TokenRecognizer(TokenKind::AND, Recognizer::StrMatch("AND")),
+    TokenRecognizer(TokenKind::OR, Recognizer::StrMatch("OR")),
+    TokenRecognizer(TokenKind::NOT, Recognizer::StrMatch("NOT")),
+    TokenRecognizer(TokenKind::ANY, Recognizer::StrMatch("ANY")),
 ];
 pub struct DefaultBuilder {
     res_stack: Vec<Symbol>,
@@ -2553,10 +5078,27 @@ for DefaultBuilder {
             TokenKind::INTEGER_NAME => Terminal::INTEGER_NAME,
             TokenKind::STRING_NAME => Terminal::STRING_NAME,
             TokenKind::DATE_NAME => Terminal::DATE_NAME,
-            TokenKind::Number => Terminal::Number(pgs_actions::number(context, token)),
+            TokenKind::NUMBER => Terminal::NUMBER(pgs_actions::number(context, token)),
             TokenKind::OPTIONAL => Terminal::OPTIONAL,
             TokenKind::AMPERSAND => Terminal::AMPERSAND,
             TokenKind::AT => Terminal::AT,
+            TokenKind::CHECK => Terminal::CHECK,
+            TokenKind::TRUE => Terminal::TRUE,
+            TokenKind::FALSE => Terminal::FALSE,
+            TokenKind::GT => Terminal::GT,
+            TokenKind::LT => Terminal::LT,
+            TokenKind::GE => Terminal::GE,
+            TokenKind::LE => Terminal::LE,
+            TokenKind::EQUALS => Terminal::EQUALS,
+            TokenKind::QUOTED_STRING => {
+                Terminal::QUOTED_STRING(pgs_actions::quoted_string(context, token))
+            }
+            TokenKind::REGEX => Terminal::REGEX,
+            TokenKind::AND => Terminal::AND,
+            TokenKind::OR => Terminal::OR,
+            TokenKind::NOT => Terminal::NOT,
+            TokenKind::ANY => Terminal::ANY,
+            _ => panic!("Shift of unreachable terminal!"),
         };
         self.res_stack.push(Symbol::Terminal(val));
     }
@@ -3057,22 +5599,110 @@ for DefaultBuilder {
             ProdKind::PropertyP1 => {
                 let mut i = self
                     .res_stack
-                    .split_off(self.res_stack.len() - 4usize)
+                    .split_off(self.res_stack.len() - 3usize)
                     .into_iter();
-                match (
-                    i.next().unwrap(),
-                    i.next().unwrap(),
-                    i.next().unwrap(),
-                    i.next().unwrap(),
-                ) {
+                match (i.next().unwrap(), i.next().unwrap(), i.next().unwrap()) {
                     (
                         Symbol::NonTerminal(NonTerminal::key(p0)),
                         _,
                         Symbol::NonTerminal(NonTerminal::TypeSpec(p1)),
-                        Symbol::NonTerminal(NonTerminal::CardOpt(p2)),
+                    ) => NonTerminal::Property(pgs_actions::property_c1(context, p0, p1)),
+                    _ => panic!("Invalid symbol parse stack data."),
+                }
+            }
+            ProdKind::keyP1 => {
+                let mut i = self
+                    .res_stack
+                    .split_off(self.res_stack.len() - 1usize)
+                    .into_iter();
+                match i.next().unwrap() {
+                    Symbol::Terminal(Terminal::IDENTIFIER(p0)) => {
+                        NonTerminal::key(pgs_actions::key_identifier(context, p0))
+                    }
+                    _ => panic!("Invalid symbol parse stack data."),
+                }
+            }
+            ProdKind::TypeSpecP1 => {
+                let mut i = self
+                    .res_stack
+                    .split_off(self.res_stack.len() - 2usize)
+                    .into_iter();
+                match (i.next().unwrap(), i.next().unwrap()) {
+                    (
+                        Symbol::NonTerminal(NonTerminal::SimpleType(p0)),
+                        Symbol::NonTerminal(NonTerminal::MoreTypesOpt(p1)),
                     ) => {
-                        NonTerminal::Property(
-                            pgs_actions::property_c1(context, p0, p1, p2),
+                        NonTerminal::TypeSpec(pgs_actions::type_spec_c1(context, p0, p1))
+                    }
+                    _ => panic!("Invalid symbol parse stack data."),
+                }
+            }
+            ProdKind::MoreTypesOptP1 => {
+                let mut i = self
+                    .res_stack
+                    .split_off(self.res_stack.len() - 1usize)
+                    .into_iter();
+                match i.next().unwrap() {
+                    Symbol::NonTerminal(NonTerminal::MoreTypes(p0)) => {
+                        NonTerminal::MoreTypesOpt(
+                            pgs_actions::more_types_opt_more_types(context, p0),
+                        )
+                    }
+                    _ => panic!("Invalid symbol parse stack data."),
+                }
+            }
+            ProdKind::MoreTypesOptP2 => {
+                NonTerminal::MoreTypesOpt(pgs_actions::more_types_opt_empty(context))
+            }
+            ProdKind::MoreTypesIntersectionType => {
+                let mut i = self
+                    .res_stack
+                    .split_off(self.res_stack.len() - 3usize)
+                    .into_iter();
+                match (i.next().unwrap(), i.next().unwrap(), i.next().unwrap()) {
+                    (
+                        _,
+                        Symbol::NonTerminal(NonTerminal::SimpleType(p0)),
+                        Symbol::NonTerminal(NonTerminal::MoreTypesOpt(p1)),
+                    ) => {
+                        NonTerminal::MoreTypes(
+                            pgs_actions::more_types_intersection_type(context, p0, p1),
+                        )
+                    }
+                    _ => panic!("Invalid symbol parse stack data."),
+                }
+            }
+            ProdKind::MoreTypesUnionType => {
+                let mut i = self
+                    .res_stack
+                    .split_off(self.res_stack.len() - 3usize)
+                    .into_iter();
+                match (i.next().unwrap(), i.next().unwrap(), i.next().unwrap()) {
+                    (
+                        _,
+                        Symbol::NonTerminal(NonTerminal::SimpleType(p0)),
+                        Symbol::NonTerminal(NonTerminal::MoreTypesOpt(p1)),
+                    ) => {
+                        NonTerminal::MoreTypes(
+                            pgs_actions::more_types_union_type(context, p0, p1),
+                        )
+                    }
+                    _ => panic!("Invalid symbol parse stack data."),
+                }
+            }
+            ProdKind::SimpleTypeStringSpec => {
+                let mut i = self
+                    .res_stack
+                    .split_off(self.res_stack.len() - 3usize)
+                    .into_iter();
+                match (i.next().unwrap(), i.next().unwrap(), i.next().unwrap()) {
+                    (
+                        _,
+                        Symbol::NonTerminal(NonTerminal::CardOpt(p0)),
+                        Symbol::NonTerminal(NonTerminal::CheckOpt(p1)),
+                    ) => {
+                        NonTerminal::SimpleType(
+                            pgs_actions::simple_type_string_spec(context, p0, p1),
                         )
                     }
                     _ => panic!("Invalid symbol parse stack data."),
@@ -3093,52 +5723,234 @@ for DefaultBuilder {
             ProdKind::CardOptP2 => {
                 NonTerminal::CardOpt(pgs_actions::card_opt_empty(context))
             }
-            ProdKind::keyP1 => {
+            ProdKind::CheckOptP1 => {
                 let mut i = self
                     .res_stack
                     .split_off(self.res_stack.len() - 1usize)
                     .into_iter();
                 match i.next().unwrap() {
-                    Symbol::Terminal(Terminal::IDENTIFIER(p0)) => {
-                        NonTerminal::key(pgs_actions::key_identifier(context, p0))
+                    Symbol::NonTerminal(NonTerminal::Check(p0)) => {
+                        NonTerminal::CheckOpt(pgs_actions::check_opt_check(context, p0))
                     }
                     _ => panic!("Invalid symbol parse stack data."),
                 }
             }
-            ProdKind::TypeSpecP1 => {
+            ProdKind::CheckOptP2 => {
+                NonTerminal::CheckOpt(pgs_actions::check_opt_empty(context))
+            }
+            ProdKind::SimpleTypeInteger => {
                 let mut i = self
                     .res_stack
-                    .split_off(self.res_stack.len() - 1usize)
+                    .split_off(self.res_stack.len() - 3usize)
                     .into_iter();
-                match i.next().unwrap() {
-                    Symbol::NonTerminal(NonTerminal::SimpleType(p0)) => {
-                        NonTerminal::TypeSpec(
-                            pgs_actions::type_spec_simple_type(context, p0),
+                match (i.next().unwrap(), i.next().unwrap(), i.next().unwrap()) {
+                    (
+                        _,
+                        Symbol::NonTerminal(NonTerminal::CardOpt(p0)),
+                        Symbol::NonTerminal(NonTerminal::CheckOpt(p1)),
+                    ) => {
+                        NonTerminal::SimpleType(
+                            pgs_actions::simple_type_integer(context, p0, p1),
                         )
                     }
                     _ => panic!("Invalid symbol parse stack data."),
                 }
             }
-            ProdKind::SimpleTypeP1 => {
-                let _ = self
+            ProdKind::SimpleTypeDate => {
+                let mut i = self
                     .res_stack
-                    .split_off(self.res_stack.len() - 1usize)
+                    .split_off(self.res_stack.len() - 3usize)
                     .into_iter();
-                NonTerminal::SimpleType(pgs_actions::simple_type_string_name(context))
+                match (i.next().unwrap(), i.next().unwrap(), i.next().unwrap()) {
+                    (
+                        _,
+                        Symbol::NonTerminal(NonTerminal::CardOpt(p0)),
+                        Symbol::NonTerminal(NonTerminal::CheckOpt(p1)),
+                    ) => {
+                        NonTerminal::SimpleType(
+                            pgs_actions::simple_type_date(context, p0, p1),
+                        )
+                    }
+                    _ => panic!("Invalid symbol parse stack data."),
+                }
             }
-            ProdKind::SimpleTypeP2 => {
-                let _ = self
+            ProdKind::SimpleTypeAny => {
+                let mut i = self
                     .res_stack
-                    .split_off(self.res_stack.len() - 1usize)
+                    .split_off(self.res_stack.len() - 2usize)
                     .into_iter();
-                NonTerminal::SimpleType(pgs_actions::simple_type_integer_name(context))
+                match (i.next().unwrap(), i.next().unwrap()) {
+                    (_, Symbol::NonTerminal(NonTerminal::CheckOpt(p0))) => {
+                        NonTerminal::SimpleType(
+                            pgs_actions::simple_type_any(context, p0),
+                        )
+                    }
+                    _ => panic!("Invalid symbol parse stack data."),
+                }
             }
-            ProdKind::SimpleTypeP3 => {
+            ProdKind::SimpleTypeCond => {
+                let mut i = self
+                    .res_stack
+                    .split_off(self.res_stack.len() - 2usize)
+                    .into_iter();
+                match (i.next().unwrap(), i.next().unwrap()) {
+                    (_, Symbol::NonTerminal(NonTerminal::Cond(p0))) => {
+                        NonTerminal::SimpleType(
+                            pgs_actions::simple_type_cond(context, p0),
+                        )
+                    }
+                    _ => panic!("Invalid symbol parse stack data."),
+                }
+            }
+            ProdKind::CheckP1 => {
+                let mut i = self
+                    .res_stack
+                    .split_off(self.res_stack.len() - 2usize)
+                    .into_iter();
+                match (i.next().unwrap(), i.next().unwrap()) {
+                    (_, Symbol::NonTerminal(NonTerminal::Cond(p0))) => {
+                        NonTerminal::Check(pgs_actions::check_cond(context, p0))
+                    }
+                    _ => panic!("Invalid symbol parse stack data."),
+                }
+            }
+            ProdKind::CondP1 => {
                 let _ = self
                     .res_stack
                     .split_off(self.res_stack.len() - 1usize)
                     .into_iter();
-                NonTerminal::SimpleType(pgs_actions::simple_type_date_name(context))
+                NonTerminal::Cond(pgs_actions::cond_true(context))
+            }
+            ProdKind::CondP2 => {
+                let _ = self
+                    .res_stack
+                    .split_off(self.res_stack.len() - 1usize)
+                    .into_iter();
+                NonTerminal::Cond(pgs_actions::cond_false(context))
+            }
+            ProdKind::CondGT => {
+                let mut i = self
+                    .res_stack
+                    .split_off(self.res_stack.len() - 2usize)
+                    .into_iter();
+                match (i.next().unwrap(), i.next().unwrap()) {
+                    (_, Symbol::NonTerminal(NonTerminal::SingleValue(p0))) => {
+                        NonTerminal::Cond(pgs_actions::cond_gt(context, p0))
+                    }
+                    _ => panic!("Invalid symbol parse stack data."),
+                }
+            }
+            ProdKind::CondGE => {
+                let mut i = self
+                    .res_stack
+                    .split_off(self.res_stack.len() - 2usize)
+                    .into_iter();
+                match (i.next().unwrap(), i.next().unwrap()) {
+                    (_, Symbol::NonTerminal(NonTerminal::SingleValue(p0))) => {
+                        NonTerminal::Cond(pgs_actions::cond_ge(context, p0))
+                    }
+                    _ => panic!("Invalid symbol parse stack data."),
+                }
+            }
+            ProdKind::CondLT => {
+                let mut i = self
+                    .res_stack
+                    .split_off(self.res_stack.len() - 2usize)
+                    .into_iter();
+                match (i.next().unwrap(), i.next().unwrap()) {
+                    (_, Symbol::NonTerminal(NonTerminal::SingleValue(p0))) => {
+                        NonTerminal::Cond(pgs_actions::cond_lt(context, p0))
+                    }
+                    _ => panic!("Invalid symbol parse stack data."),
+                }
+            }
+            ProdKind::CondLE => {
+                let mut i = self
+                    .res_stack
+                    .split_off(self.res_stack.len() - 2usize)
+                    .into_iter();
+                match (i.next().unwrap(), i.next().unwrap()) {
+                    (_, Symbol::NonTerminal(NonTerminal::SingleValue(p0))) => {
+                        NonTerminal::Cond(pgs_actions::cond_le(context, p0))
+                    }
+                    _ => panic!("Invalid symbol parse stack data."),
+                }
+            }
+            ProdKind::CondEQ => {
+                let mut i = self
+                    .res_stack
+                    .split_off(self.res_stack.len() - 2usize)
+                    .into_iter();
+                match (i.next().unwrap(), i.next().unwrap()) {
+                    (_, Symbol::NonTerminal(NonTerminal::SingleValue(p0))) => {
+                        NonTerminal::Cond(pgs_actions::cond_eq(context, p0))
+                    }
+                    _ => panic!("Invalid symbol parse stack data."),
+                }
+            }
+            ProdKind::CondRegex => {
+                let mut i = self
+                    .res_stack
+                    .split_off(self.res_stack.len() - 2usize)
+                    .into_iter();
+                match (i.next().unwrap(), i.next().unwrap()) {
+                    (_, Symbol::Terminal(Terminal::QUOTED_STRING(p0))) => {
+                        NonTerminal::Cond(pgs_actions::cond_regex(context, p0))
+                    }
+                    _ => panic!("Invalid symbol parse stack data."),
+                }
+            }
+            ProdKind::CondAnd => {
+                let mut i = self
+                    .res_stack
+                    .split_off(self.res_stack.len() - 3usize)
+                    .into_iter();
+                match (i.next().unwrap(), i.next().unwrap(), i.next().unwrap()) {
+                    (
+                        Symbol::NonTerminal(NonTerminal::Cond(p0)),
+                        _,
+                        Symbol::NonTerminal(NonTerminal::Cond(p1)),
+                    ) => NonTerminal::Cond(pgs_actions::cond_and(context, p0, p1)),
+                    _ => panic!("Invalid symbol parse stack data."),
+                }
+            }
+            ProdKind::CondOR => {
+                let mut i = self
+                    .res_stack
+                    .split_off(self.res_stack.len() - 3usize)
+                    .into_iter();
+                match (i.next().unwrap(), i.next().unwrap(), i.next().unwrap()) {
+                    (
+                        Symbol::NonTerminal(NonTerminal::Cond(p0)),
+                        _,
+                        Symbol::NonTerminal(NonTerminal::Cond(p1)),
+                    ) => NonTerminal::Cond(pgs_actions::cond_or(context, p0, p1)),
+                    _ => panic!("Invalid symbol parse stack data."),
+                }
+            }
+            ProdKind::CondNot => {
+                let mut i = self
+                    .res_stack
+                    .split_off(self.res_stack.len() - 2usize)
+                    .into_iter();
+                match (i.next().unwrap(), i.next().unwrap()) {
+                    (_, Symbol::NonTerminal(NonTerminal::Cond(p0))) => {
+                        NonTerminal::Cond(pgs_actions::cond_not(context, p0))
+                    }
+                    _ => panic!("Invalid symbol parse stack data."),
+                }
+            }
+            ProdKind::CondParenCond => {
+                let mut i = self
+                    .res_stack
+                    .split_off(self.res_stack.len() - 3usize)
+                    .into_iter();
+                match (i.next().unwrap(), i.next().unwrap(), i.next().unwrap()) {
+                    (_, Symbol::NonTerminal(NonTerminal::Cond(p0)), _) => {
+                        NonTerminal::Cond(pgs_actions::cond_paren_cond(context, p0))
+                    }
+                    _ => panic!("Invalid symbol parse stack data."),
+                }
             }
             ProdKind::CardOptional => {
                 let _ = self
@@ -3175,7 +5987,7 @@ for DefaultBuilder {
                 ) {
                     (
                         _,
-                        Symbol::Terminal(Terminal::Number(p0)),
+                        Symbol::Terminal(Terminal::NUMBER(p0)),
                         _,
                         Symbol::NonTerminal(NonTerminal::Max(p1)),
                         _,
@@ -3189,7 +6001,7 @@ for DefaultBuilder {
                     .split_off(self.res_stack.len() - 1usize)
                     .into_iter();
                 match i.next().unwrap() {
-                    Symbol::Terminal(Terminal::Number(p0)) => {
+                    Symbol::Terminal(Terminal::NUMBER(p0)) => {
                         NonTerminal::Max(pgs_actions::max_number(context, p0))
                     }
                     _ => panic!("Invalid symbol parse stack data."),
@@ -3202,6 +6014,35 @@ for DefaultBuilder {
                     .into_iter();
                 NonTerminal::Max(pgs_actions::max_star(context))
             }
+            ProdKind::SingleValueStringValue => {
+                let mut i = self
+                    .res_stack
+                    .split_off(self.res_stack.len() - 1usize)
+                    .into_iter();
+                match i.next().unwrap() {
+                    Symbol::Terminal(Terminal::QUOTED_STRING(p0)) => {
+                        NonTerminal::SingleValue(
+                            pgs_actions::single_value_string_value(context, p0),
+                        )
+                    }
+                    _ => panic!("Invalid symbol parse stack data."),
+                }
+            }
+            ProdKind::SingleValueNumberValue => {
+                let mut i = self
+                    .res_stack
+                    .split_off(self.res_stack.len() - 1usize)
+                    .into_iter();
+                match i.next().unwrap() {
+                    Symbol::Terminal(Terminal::NUMBER(p0)) => {
+                        NonTerminal::SingleValue(
+                            pgs_actions::single_value_number_value(context, p0),
+                        )
+                    }
+                    _ => panic!("Invalid symbol parse stack data."),
+                }
+            }
+            _ => panic!("Reduce of unreachable nonterminal!"),
         };
         self.res_stack.push(Symbol::NonTerminal(prod));
     }

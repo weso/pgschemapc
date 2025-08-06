@@ -2,15 +2,17 @@ use super::pgs_actions::CreateType;
 use rustemo::Parser;
 
 use crate::{
-    card::{Card as PGCard, Max as PGMax},
+    boolean_expr::BooleanExpr,
+    card::{self, Card as PGCard, Max as PGMax},
     formal_graph_type::FormalGraphType,
     key::Key,
     label_property_spec::LabelPropertySpec as PGLabelPropertySpec,
     parser::{
         pgs::PgsParser,
         pgs_actions::{
-            BaseProperty, Card, LabelPropertySpec, LabelSpec, Labels, Max, MoreLabels, Properties,
-            Property, PropertySpec, Range, SingleLabel, TypeSpec,
+            BaseProperty, Card, Cond, LabelPropertySpec, Labels, Max, MoreLabels, MoreTypes,
+            Properties, Property, PropertySpec, Range, SimpleType, SingleLabel, SingleValue,
+            TypeSpec,
         },
     },
     pgs_error::PgsError,
@@ -18,6 +20,8 @@ use crate::{
         PropertyValue as PGPropertyValue, PropertyValueSpec as PGPropertyValueSpec,
         TypeSpec as PGTypeSpec,
     },
+    value::Value,
+    value_type::ValueType,
 };
 
 pub struct PgsBuilder {}
@@ -150,12 +154,7 @@ fn get_base_property(base_property: BaseProperty) -> Result<PGPropertyValue, Pgs
 
 fn get_property(property: Property) -> Result<(Key, PGTypeSpec), PgsError> {
     let key = property.key;
-    let card = if let Some(card) = property.card_opt {
-        get_card(card)?
-    } else {
-        PGCard::One
-    };
-    let type_spec = get_type_spec(property.type_spec, card)?;
+    let type_spec = get_type_spec(property.type_spec)?;
     Ok((Key::new(key.as_str()), type_spec))
 }
 
@@ -176,7 +175,7 @@ fn get_range(range: Range) -> Result<PGCard, PgsError> {
 
 fn get_max(max: Max) -> Result<PGMax, PgsError> {
     match max {
-        Max::Number(n) => {
+        Max::NUMBER(n) => {
             let n = get_number(n)?;
             Ok(PGMax::Bounded(n))
         }
@@ -190,10 +189,134 @@ fn get_number(number: String) -> Result<usize, PgsError> {
         .map_err(|_| PgsError::InvalidNumber(number))
 }
 
-fn get_type_spec(type_spec: TypeSpec, card: PGCard) -> Result<PGTypeSpec, PgsError> {
-    match type_spec {
-        super::pgs_actions::SimpleType::STRING_NAME => Ok(PGTypeSpec::string(card)),
-        super::pgs_actions::SimpleType::INTEGER_NAME => Ok(PGTypeSpec::integer(card)),
-        super::pgs_actions::SimpleType::DATE_NAME => Ok(PGTypeSpec::date(card)),
+fn get_type_spec(type_spec: TypeSpec) -> Result<PGTypeSpec, PgsError> {
+    let simple_type = get_simple_type(type_spec.simple_type)?;
+    if let Some(more_types) = type_spec.more_types_opt {
+        get_more_types(more_types, simple_type)
+    } else {
+        Ok(simple_type)
+    }
+}
+
+fn get_more_types(more_types: MoreTypes, current: PGTypeSpec) -> Result<PGTypeSpec, PgsError> {
+    match more_types {
+        MoreTypes::UnionType(union_type) => {
+            let right = get_simple_type(union_type.simple_type)?;
+            Ok(PGTypeSpec::union(current, right))
+        }
+        MoreTypes::IntersectionType(intersection_type) => {
+            let right = get_simple_type(intersection_type.simple_type)?;
+            Ok(PGTypeSpec::intersection(current, right))
+        }
+    }
+}
+
+fn get_simple_type(simple_type: SimpleType) -> Result<PGTypeSpec, PgsError> {
+    match simple_type {
+        SimpleType::StringSpec(str) => {
+            let card = get_card_opt(str.card_opt)?;
+            if let Some(cond) = str.check_opt {
+                let cond = get_cond(cond)?;
+                Ok(PGTypeSpec::cond(ValueType::string(card), cond))
+            } else {
+                Ok(PGTypeSpec::string(card))
+            }
+        }
+        SimpleType::Integer(integer) => {
+            let card = get_card_opt(integer.card_opt)?;
+            if let Some(cond) = integer.check_opt {
+                let cond = get_cond(cond)?;
+                Ok(PGTypeSpec::cond(ValueType::integer(card), cond))
+            } else {
+                Ok(PGTypeSpec::integer(card))
+            }
+        }
+        SimpleType::Date(date) => {
+            let card = get_card_opt(date.card_opt)?;
+            if let Some(cond) = date.check_opt {
+                let cond = get_cond(cond)?;
+                Ok(PGTypeSpec::cond(ValueType::date(card), cond))
+            } else {
+                Ok(PGTypeSpec::date(card))
+            }
+        }
+        SimpleType::Any(cond) => {
+            if let Some(cond) = cond {
+                let cond = get_cond(cond)?;
+                Ok(PGTypeSpec::cond(ValueType::Any, cond))
+            } else {
+                Ok(PGTypeSpec::any())
+            }
+        }
+        SimpleType::Cond(cond) => {
+            let cond = get_cond(cond)?;
+            Ok(PGTypeSpec::cond(ValueType::Any, cond))
+        }
+    }
+}
+
+fn get_card_opt(card_opt: Option<Card>) -> Result<PGCard, PgsError> {
+    if let Some(card) = card_opt {
+        get_card(card)
+    } else {
+        Ok(PGCard::One)
+    }
+}
+
+fn get_cond(cond: Cond) -> Result<BooleanExpr, PgsError> {
+    match cond {
+        Cond::TRUE => Ok(BooleanExpr::True),
+        Cond::FALSE => Ok(BooleanExpr::False),
+        Cond::And(and) => {
+            let left = get_cond(*and.left)?;
+            let right = get_cond(*and.right)?;
+            Ok(BooleanExpr::And(Box::new(left), Box::new(right)))
+        }
+        Cond::OR(or) => {
+            let left = get_cond(*or.left)?;
+            let right = get_cond(*or.right)?;
+            Ok(BooleanExpr::Or(Box::new(left), Box::new(right)))
+        }
+        Cond::Not(cond) => {
+            let expr = get_cond(*cond)?;
+            Ok(BooleanExpr::Not(Box::new(expr)))
+        }
+        Cond::ParenCond(cond) => {
+            let expr = get_cond(*cond)?;
+            Ok(expr)
+        }
+        Cond::GT(single_value) => {
+            let value = get_value(single_value)?;
+            Ok(BooleanExpr::GreaterThan(value))
+        }
+        Cond::GE(single_value) => {
+            let value = get_value(single_value)?;
+            Ok(BooleanExpr::GreaterThanOrEqual(value))
+        }
+        Cond::LT(single_value) => {
+            let value = get_value(single_value)?;
+            Ok(BooleanExpr::LessThan(value))
+        }
+        Cond::LE(single_value) => {
+            let value = get_value(single_value)?;
+            Ok(BooleanExpr::LessThanOrEqual(value))
+        }
+        Cond::EQ(single_value) => {
+            let value = get_value(single_value)?;
+            Ok(BooleanExpr::Equals(value))
+        }
+        Cond::Regex(pattern) => Ok(BooleanExpr::Regex(pattern)),
+    }
+}
+
+fn get_value(value: SingleValue) -> Result<Value, PgsError> {
+    match value {
+        SingleValue::StringValue(s) => Ok(Value::str(s.as_str())),
+        SingleValue::NumberValue(str_number_) => {
+            let number = str_number_.parse::<i32>().map_err(|_| {
+                PgsError::InvalidNumber(format!("Invalid number value: {}", str_number_))
+            })?;
+            Ok(Value::int(number))
+        }
     }
 }

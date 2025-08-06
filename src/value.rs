@@ -1,5 +1,7 @@
 use std::fmt::Display;
 
+use crate::pgs_error::PgsError;
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Value {
     String(String),
@@ -30,6 +32,61 @@ impl Value {
 
     pub fn is_date(&self) -> bool {
         matches!(self, Value::Date(_))
+    }
+
+    pub fn greater_than(&self, other: &Value) -> Result<bool, PgsError> {
+        match (self, other) {
+            (Value::Integer(i), Value::Integer(v)) => Ok(i > v),
+            _ => Err(PgsError::TypeMismatch {
+                operation: ">".into(),
+                expected: "Integer".into(),
+                found: format!("{:?}", other),
+            }),
+        }
+    }
+
+    pub fn less_than(&self, other: &Value) -> Result<bool, PgsError> {
+        match (self, other) {
+            (Value::Integer(i), Value::Integer(v)) => Ok(i < v),
+            _ => Err(PgsError::TypeMismatch {
+                operation: "<".into(),
+                expected: "Integer".into(),
+                found: format!("{:?}", other),
+            }),
+        }
+    }
+
+    pub fn less_than_or_equal(&self, other: &Value) -> Result<bool, PgsError> {
+        match (self, other) {
+            (Value::Integer(i), Value::Integer(v)) => Ok(i < v),
+            _ => Err(PgsError::TypeMismatch {
+                operation: "<=".into(),
+                expected: "Integer".into(),
+                found: format!("{:?}", other),
+            }),
+        }
+    }
+
+    pub fn greater_than_or_equal(&self, other: &Value) -> Result<bool, PgsError> {
+        match (self, other) {
+            (Value::Integer(i), Value::Integer(v)) => Ok(i < v),
+            _ => Err(PgsError::TypeMismatch {
+                operation: ">=".into(),
+                expected: "Integer".into(),
+                found: format!("{:?}", other),
+            }),
+        }
+    }
+
+    pub fn regex_match(&self, pattern: &str) -> Result<bool, PgsError> {
+        match self {
+            Value::String(s) => Ok(s.contains(pattern)),
+            _ => Err(PgsError::TypeMismatch {
+                operation: "regex_match".into(),
+                expected: "String".into(),
+                found: format!("{:?}", self),
+            }),
+        }
     }
 }
 
