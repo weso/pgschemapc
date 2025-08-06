@@ -40,10 +40,7 @@ pub struct Node {
     pub label_property_spec: LabelPropertySpec,
 }
 pub fn node_c1(_ctx: &Ctx, id: Id, label_property_spec: LabelPropertySpec) -> Node {
-    Node {
-        id,
-        label_property_spec,
-    }
+    Node { id, label_property_spec }
 }
 pub type Id = IDENTIFIER;
 pub fn id_identifier(_ctx: &Ctx, identifier: IDENTIFIER) -> Id {
@@ -72,7 +69,10 @@ pub fn label_spec_opt_empty(_ctx: &Ctx) -> LabelSpecOpt {
     None
 }
 pub type PropertySpecOpt = Option<PropertySpec>;
-pub fn property_spec_opt_property_spec(_ctx: &Ctx, property_spec: PropertySpec) -> PropertySpecOpt {
+pub fn property_spec_opt_property_spec(
+    _ctx: &Ctx,
+    property_spec: PropertySpec,
+) -> PropertySpecOpt {
     Some(property_spec)
 }
 pub fn property_spec_opt_empty(_ctx: &Ctx) -> PropertySpecOpt {
@@ -103,7 +103,11 @@ pub fn properties_property1(_ctx: &Ctx, property1: Property1) -> Properties {
     property1
 }
 pub type Property1 = Vec<Property>;
-pub fn property1_c1(_ctx: &Ctx, mut property1: Property1, property: Property) -> Property1 {
+pub fn property1_c1(
+    _ctx: &Ctx,
+    mut property1: Property1,
+    property: Property,
+) -> Property1 {
     property1.push(property);
     property1
 }
@@ -146,11 +150,17 @@ pub fn single_value1_c1(
     single_value1.push(single_value);
     single_value1
 }
-pub fn single_value1_single_value(_ctx: &Ctx, single_value: SingleValue) -> SingleValue1 {
+pub fn single_value1_single_value(
+    _ctx: &Ctx,
+    single_value: SingleValue,
+) -> SingleValue1 {
     vec![single_value]
 }
 pub type SingleValue0 = Option<SingleValue1>;
-pub fn single_value0_single_value1(_ctx: &Ctx, single_value1: SingleValue1) -> SingleValue0 {
+pub fn single_value0_single_value1(
+    _ctx: &Ctx,
+    single_value1: SingleValue1,
+) -> SingleValue0 {
     Some(single_value1)
 }
 pub fn single_value0_empty(_ctx: &Ctx) -> SingleValue0 {
@@ -161,7 +171,10 @@ pub enum SingleValue {
     StringValue(QUOTED_STRING),
     NumberValue(NUMBER),
 }
-pub fn single_value_string_value(_ctx: &Ctx, quoted_string: QUOTED_STRING) -> SingleValue {
+pub fn single_value_string_value(
+    _ctx: &Ctx,
+    quoted_string: QUOTED_STRING,
+) -> SingleValue {
     SingleValue::StringValue(quoted_string)
 }
 pub fn single_value_number_value(_ctx: &Ctx, number: NUMBER) -> SingleValue {
