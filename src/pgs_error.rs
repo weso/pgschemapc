@@ -11,7 +11,10 @@ pub enum PgsError {
     MissingType(TypeName),
 
     #[error("Not found node with label: {label}")]
-    MissingLabel { label: String },
+    MissingNodeLabel { label: String },
+
+    #[error("Not found edge with label: {label}")]
+    MissingEdgeLabel { label: String },
 
     #[error("Key not found in RecordType: {key} in Closed record type {record_type}")]
     KeyNotFoundClosedRecordType { key: Key, record_type: String },

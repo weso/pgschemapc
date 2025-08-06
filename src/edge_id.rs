@@ -1,17 +1,17 @@
 use std::fmt::Display;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct NodeId {
+pub struct EdgeId {
     pub id: usize,
 }
 
-impl NodeId {
+impl EdgeId {
     pub fn new(id: usize) -> Self {
-        NodeId { id }
+        EdgeId { id }
     }
 }
 
-impl Display for NodeId {
+impl Display for EdgeId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "({})", self.id)
     }

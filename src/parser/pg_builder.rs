@@ -6,7 +6,7 @@ use crate::{
     key::Key,
     parser::{
         pg::PgParser,
-        pg_actions::{LabelPropertySpec, Node, Property, SingleValue, Values},
+        pg_actions::{Declaration, Edge, LabelsRecord, Node, Property, SingleValue, Values},
     },
     pg::PropertyGraph,
     pgs_error::PgsError,
@@ -28,45 +28,90 @@ impl PgBuilder {
                 error: e.to_string(),
             })?;
         let mut pg = PropertyGraph::new();
-        get_nodes(pg_content, &mut pg)?;
+        get_declarations(pg_content, &mut pg)?;
         Ok(pg)
     }
 }
 
-fn get_nodes(nodes: Vec<Node>, pg: &mut PropertyGraph) -> Result<(), PgsError> {
-    for node in nodes {
-        get_node(node, pg)?;
+fn get_declarations(decls: Vec<Declaration>, pg: &mut PropertyGraph) -> Result<(), PgsError> {
+    for decl in decls {
+        get_declaration(decl, pg)?;
     }
     Ok(())
 }
 
+fn get_declaration(decl: Declaration, pg: &mut PropertyGraph) -> Result<(), PgsError> {
+    match decl {
+        Declaration::Node(node) => get_node(node, pg),
+        Declaration::Edge(edge) => get_edge(edge, pg),
+    }
+    /*    let id = get_id(decl.id)?;
+    let either = get_node_or_edge(decl.node_edge)?;
+    match either {
+        Either::Left((labels, record)) => {
+            pg.add_node(id, labels, record);
+        }
+        Either::Right((source, labels, record, target)) => {
+            pg.add_edge(id, source, labels, record, target)?;
+        }
+    }
+    Ok(()) */
+}
+
+/*fn get_node_or_edge(
+    node_edge: NodeEdge,
+) -> Result<
+    Either<
+        (HashSet<LabelName>, Record),                 // Node
+        (String, HashSet<LabelName>, Record, String), // Edge
+    >,
+    PgsError,
+> {
+    match node_edge {
+        NodeEdge::Node(labels_record) => {
+            let (labels, record) = get_labels_record(labels_record)?;
+            Ok(Either::Left((labels, record)))
+        }
+        NodeEdge::Edge(edge) => {
+            let (source, labels, record, target) = get_edge(edge)?;
+            Ok(Either::Right((source, labels, record, target)))
+        }
+    }
+} */
+
+fn get_edge(edge: Edge, pg: &mut PropertyGraph) -> Result<(), PgsError> {
+    let id = get_id(edge.id)?;
+    let source = get_id(edge.source)?;
+    let target = get_id(edge.target)?;
+    let (labels, record) = get_labels_record(edge.labels_record)?;
+    pg.add_edge(id, source, labels, record, target)
+}
+
 fn get_node(node: Node, pg: &mut PropertyGraph) -> Result<(), PgsError> {
     let id = get_id(node.id)?;
-    let (labels, record) = get_properties(node.label_property_spec)?;
+    let (labels, record) = get_labels_record(node.labels_record)?;
     pg.add_node(id, labels, record);
     Ok(())
 }
 
-fn get_id(id: String) -> Result<String, PgsError> {
-    Ok(id)
+fn get_labels_record(
+    labels_record: LabelsRecord,
+) -> Result<(HashSet<LabelName>, Record), PgsError> {
+    let labels = if let Some(labels) = labels_record.labels_opt {
+        get_labels(labels).unwrap_or_default()
+    } else {
+        HashSet::new()
+    };
+    let record = if let Some(record) = labels_record.record_opt {
+        get_properties(record)?
+    } else {
+        Record::new()
+    };
+    Ok((labels, record))
 }
 
-fn get_properties(
-    label_property_spec: LabelPropertySpec,
-) -> Result<(HashSet<LabelName>, Record), PgsError> {
-    let labels = if let Some(label_spec) = label_property_spec.label_spec_opt {
-        let labels = get_labels(label_spec)?;
-        Ok(labels)
-    } else {
-        Ok(HashSet::new())
-    }?;
-    let record = if let Some(property_spec) = label_property_spec.property_spec_opt {
-        let record = get_property_spec(property_spec)?;
-        Ok(record)
-    } else {
-        Ok(Record::new())
-    }?;
-    Ok((labels, record))
+fn get_id(id: String) -> Result<String, PgsError> {
+    Ok(id)
 }
 
 fn get_labels(labels: Vec<String>) -> Result<HashSet<LabelName>, PgsError> {
@@ -77,7 +122,7 @@ fn get_labels(labels: Vec<String>) -> Result<HashSet<LabelName>, PgsError> {
     Ok(result)
 }
 
-fn get_property_spec(property_spec: Vec<Property>) -> Result<Record, PgsError> {
+fn get_properties(property_spec: Vec<Property>) -> Result<Record, PgsError> {
     let mut record = Record::new();
     for property in property_spec {
         let (key, values) = get_property(property)?;

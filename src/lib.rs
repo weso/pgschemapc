@@ -1,6 +1,7 @@
 pub mod boolean_expr;
 pub mod card;
 pub mod edge;
+pub mod edge_id;
 pub mod evidence;
 pub mod formal_base_type;
 pub mod formal_graph_type;

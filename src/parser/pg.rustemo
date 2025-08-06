@@ -1,21 +1,25 @@
 Pg:
-    Nodes ;
+    Declarations ;
 
-Nodes: Node+[SEMICOLON] ;
+Declarations: Declaration+[SEMICOLON] ;
 
-Node:
-    "(" Id LabelPropertySpec ")" ;
+Declaration: Node | Edge ;
+
+Node: "(" Id LabelsRecord ")" ;
+
+Edge:
+  "[" Id ":" "(" source=IDENTIFIER ")" "-[" LabelsRecord "]->" "(" target=IDENTIFIER ")" "]" ;
 
 Id:
-    IDENTIFIER ;  
+    IDENTIFIER ;
 
-LabelPropertySpec:
-    LabelSpec? PropertySpec? ;
+LabelsRecord:
+    Labels? Record? ;
 
-LabelSpec:
+Labels:
     ":" IDENTIFIER+[AMPERSAND] ;
 
-PropertySpec:
+Record:
     OPEN_CURLY Properties CLOSE_CURLY ;
 
 Properties: Property+[COMMA];
@@ -138,3 +142,9 @@ OPENSQUAREBRACKET:
 
 CLOSESQUAREBRACKET:
     "]" ;
+
+START_ARROW:
+    "-[" ;
+
+END_ARROW:
+    "]->" ;

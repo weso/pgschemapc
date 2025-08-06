@@ -3,14 +3,18 @@ use std::{
     fmt::Display,
 };
 
-use crate::{edge::Edge, node::Node, pgs_error::PgsError, record::Record, type_name::LabelName};
+use crate::{
+    edge::Edge, edge_id::EdgeId, node::Node, node_id::NodeId, pgs_error::PgsError, record::Record,
+    type_name::LabelName,
+};
 
 /// Simple representation of a property graph
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PropertyGraph {
-    nodes: HashMap<usize, Node>,
-    edges: HashMap<usize, Edge>,
-    label_names: HashMap<String, usize>,
+    nodes: HashMap<NodeId, Node>,
+    edges: HashMap<EdgeId, Edge>,
+    node_names: HashMap<String, NodeId>,
+    edge_names: HashMap<String, EdgeId>,
     node_id_counter: usize,
     edge_id_counter: usize,
 }
@@ -21,47 +25,89 @@ impl PropertyGraph {
         PropertyGraph {
             nodes: HashMap::new(),
             edges: HashMap::new(),
-            label_names: HashMap::new(),
+            node_names: HashMap::new(),
+            edge_names: HashMap::new(),
             node_id_counter: 0,
             edge_id_counter: 0,
         }
     }
 
     pub fn get_node_by_label(&self, label: &str) -> Result<&Node, PgsError> {
-        let id = self.label_names.get(label).ok_or(PgsError::MissingLabel {
-            label: label.to_string(),
-        })?;
-        self.nodes.get(id).ok_or(PgsError::MissingLabel {
+        let id = self
+            .node_names
+            .get(label)
+            .ok_or(PgsError::MissingNodeLabel {
+                label: label.to_string(),
+            })?;
+        self.nodes.get(id).ok_or(PgsError::MissingNodeLabel {
             label: label.to_string(),
         })
     }
 
-    pub fn with_nodes(mut self, nodes: HashMap<usize, Node>) -> Self {
+    pub fn get_edge_by_label(&self, label: &str) -> Result<&Edge, PgsError> {
+        let id = self
+            .edge_names
+            .get(label)
+            .ok_or(PgsError::MissingEdgeLabel {
+                label: label.to_string(),
+            })?;
+        self.edges.get(id).ok_or(PgsError::MissingEdgeLabel {
+            label: label.to_string(),
+        })
+    }
+
+    pub fn with_nodes(mut self, nodes: HashMap<NodeId, Node>) -> Self {
         self.nodes = nodes;
         self
     }
 
-    pub fn with_edges(mut self, edges: HashMap<usize, Edge>) -> Self {
+    pub fn with_edges(mut self, edges: HashMap<EdgeId, Edge>) -> Self {
         self.edges = edges;
         self
     }
 
     /// Adds a node to the PropertyGraph.
     pub fn add_node(&mut self, name_id: String, labels: HashSet<LabelName>, record: Record) {
-        let id = self.node_id_counter;
+        let id = NodeId::new(self.node_id_counter);
         self.node_id_counter += 1;
-        self.label_names.insert(name_id, id);
-        let node = Node::new(id as u32)
+        self.node_names.insert(name_id, id.clone());
+        let node = Node::new(id.clone())
             .with_labels(labels)
             .with_content(&record);
         self.nodes.insert(id, node);
     }
 
+    pub fn get_node_id(&self, label: &str) -> Result<NodeId, PgsError> {
+        self.node_names
+            .get(label)
+            .cloned()
+            .ok_or(PgsError::MissingNodeLabel {
+                label: label.to_string(),
+            })
+    }
+
     /// Adds an edge to the PropertyGraph.
-    pub fn add_edge(&mut self, edge: Edge) {
-        let id = self.edge_id_counter;
+    pub fn add_edge(
+        &mut self,
+        name_id: String,
+        source: String,
+        labels: HashSet<LabelName>,
+        record: Record,
+        target: String,
+    ) -> Result<(), PgsError> {
+        let id = EdgeId::new(self.edge_id_counter);
         self.edge_id_counter += 1;
+        let source_id = self.get_node_id(&source)?;
+        let target_id = self.get_node_id(&target)?;
+        let edge = Edge {
+            id: id.clone(),
+            source: source_id,
+            labels,
+            properties: record,
+            target: target_id,
+        };
         self.edges.insert(id, edge);
+        Ok(())
     }
 }
 

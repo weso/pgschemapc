@@ -2,6 +2,7 @@ mod boolean_expr;
 mod card;
 mod cli;
 mod edge;
+mod edge_id;
 mod evidence;
 mod formal_base_type;
 mod formal_graph_type;

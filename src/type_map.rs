@@ -33,11 +33,12 @@ impl TypeMap {
         for association in &self.associations {
             let node_id = association.node_id();
             let type_name = association.type_name();
-            let node = graph
-                .get_node_by_label(node_id)
-                .map_err(|_| PgsError::MissingLabel {
-                    label: node_id.to_string(),
-                })?;
+            let node =
+                graph
+                    .get_node_by_label(node_id)
+                    .map_err(|_| PgsError::MissingNodeLabel {
+                        label: node_id.to_string(),
+                    })?;
             let conforms_result = schema.conforms_node(&type_name, node);
             result.add_association(ResultAssociation {
                 node_id: node_id.clone(),

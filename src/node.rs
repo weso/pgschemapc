@@ -10,9 +10,9 @@ pub struct Node {
 }
 
 impl Node {
-    pub fn new(id: u32) -> Self {
+    pub fn new(id: NodeId) -> Self {
         Node {
-            id: NodeId::new(id),
+            id,
             labels: HashSet::new(),
             properties: Record::new(),
         }
@@ -70,7 +70,7 @@ mod tests {
 
     #[test]
     fn test_simple_record_alice_non_optional() {
-        let alice = Node::new(1).with_label("Person").with_content(
+        let alice = Node::new(NodeId::new(1)).with_label("Person").with_content(
             &Record::new()
                 .with_key_value("name", Value::str("Alice"))
                 .with_key_value("age", Value::int(42))
@@ -78,7 +78,7 @@ mod tests {
         );
 
         // Wrong label
-        let alice_wrong1 = Node::new(1).with_label("Other").with_content(
+        let alice_wrong1 = Node::new(NodeId::new(1)).with_label("Other").with_content(
             &Record::new()
                 .with_key_value("name", Value::str("Alice"))
                 .with_key_value("age", Value::int(42))
@@ -86,7 +86,7 @@ mod tests {
         );
 
         // Wrong age type
-        let alice_wrong2 = Node::new(1).with_label("Person").with_content(
+        let alice_wrong2 = Node::new(NodeId::new(1)).with_label("Person").with_content(
             &Record::new()
                 .with_key_value("name", Value::str("Alice"))
                 .with_key_value("age", Value::str("Other"))
@@ -94,7 +94,7 @@ mod tests {
         );
 
         // No age
-        let alice_wrong3 = Node::new(1).with_label("Person").with_content(
+        let alice_wrong3 = Node::new(NodeId::new(1)).with_label("Person").with_content(
             &Record::new()
                 .with_key_value("name", Value::str("Alice"))
                 .with_key_value("aliases", Value::str("Ally")),
@@ -141,7 +141,7 @@ mod tests {
 
     #[test]
     fn test_simple_record_alice_wrong() {
-        let alice = Node::new(1).with_label("Person").with_content(
+        let alice = Node::new(NodeId::new(1)).with_label("Person").with_content(
             &Record::new()
                 .with_key_value("name", Value::str("Alice"))
                 .with_key_value("age", Value::str("other")),
@@ -167,14 +167,14 @@ mod tests {
 
     #[test]
     fn test_simple_record_alice_optional_age_ok() {
-        let alice = Node::new(1).with_label("Person").with_content(
+        let alice = Node::new(NodeId::new(1)).with_label("Person").with_content(
             &Record::new()
                 .with_key_value("name", Value::str("Alice"))
                 .with_key_value("age", Value::int(42))
                 .with_key_value("aliases", Value::str("Ally")),
         );
 
-        let bob = Node::new(1).with_label("Person").with_content(
+        let bob = Node::new(NodeId::new(2)).with_label("Person").with_content(
             &Record::new()
                 .with_key_value("name", Value::str("Bob"))
                 .with_key_value("aliases", Value::str("Bobby")),
@@ -206,13 +206,13 @@ mod tests {
     #[traced_test]
     #[test]
     fn test_each_of_one_of() {
-        let alice = Node::new(2).with_label("Person").with_content(
+        let alice = Node::new(NodeId::new(1)).with_label("Person").with_content(
             &Record::new()
                 .with_key_value("name", Value::str("Alice"))
                 .with_key_value("aliases", Value::str("Ally")),
         );
 
-        let bob = Node::new(2).with_label("Person").with_content(
+        let bob = Node::new(NodeId::new(2)).with_label("Person").with_content(
             &Record::new()
                 .with_key_value("first_name", Value::str("Robert"))
                 .with_key_value("last_name", Value::str("Smith"))
@@ -220,7 +220,7 @@ mod tests {
                 .with_key_value("aliases", Value::str("Bobby")),
         );
 
-        let wrong1 = Node::new(2).with_label("Person").with_content(
+        let wrong1 = Node::new(NodeId::new(3)).with_label("Person").with_content(
             &Record::new()
                 .with_key_value("first_name", Value::str("Robert"))
                 .with_key_value("name", Value::str("extra_name"))

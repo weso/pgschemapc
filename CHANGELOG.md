@@ -2,6 +2,8 @@
 
 # v0.1.3 - not released yet
 - Improved visualization of errors
+- Small change in PGS grammar to avoid ambiguity when parsing OneOf record types
+- Extended property graph grammar to parse edges with ids between square brackets
 
 # v0.1.2
 

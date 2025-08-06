@@ -18,68 +18,97 @@ pub type NUMBER = String;
 pub fn number(_ctx: &Ctx, token: Token) -> NUMBER {
     token.value.into()
 }
-pub type Pg = Nodes;
-pub fn pg_nodes(_ctx: &Ctx, nodes: Nodes) -> Pg {
-    nodes
+pub type Pg = Declarations;
+pub fn pg_declarations(_ctx: &Ctx, declarations: Declarations) -> Pg {
+    declarations
 }
-pub type Nodes = Node1;
-pub fn nodes_node1(_ctx: &Ctx, node1: Node1) -> Nodes {
-    node1
+pub type Declarations = Declaration1;
+pub fn declarations_declaration1(_ctx: &Ctx, declaration1: Declaration1) -> Declarations {
+    declaration1
 }
-pub type Node1 = Vec<Node>;
-pub fn node1_c1(_ctx: &Ctx, mut node1: Node1, node: Node) -> Node1 {
-    node1.push(node);
-    node1
+pub type Declaration1 = Vec<Declaration>;
+pub fn declaration1_c1(
+    _ctx: &Ctx,
+    mut declaration1: Declaration1,
+    declaration: Declaration,
+) -> Declaration1 {
+    declaration1.push(declaration);
+    declaration1
 }
-pub fn node1_node(_ctx: &Ctx, node: Node) -> Node1 {
-    vec![node]
+pub fn declaration1_declaration(_ctx: &Ctx, declaration: Declaration) -> Declaration1 {
+    vec![declaration]
+}
+#[derive(Debug, Clone)]
+pub enum Declaration {
+    Node(Node),
+    Edge(Edge),
+}
+pub fn declaration_node(_ctx: &Ctx, node: Node) -> Declaration {
+    Declaration::Node(node)
+}
+pub fn declaration_edge(_ctx: &Ctx, edge: Edge) -> Declaration {
+    Declaration::Edge(edge)
 }
 #[derive(Debug, Clone)]
 pub struct Node {
     pub id: Id,
-    pub label_property_spec: LabelPropertySpec,
+    pub labels_record: LabelsRecord,
 }
-pub fn node_c1(_ctx: &Ctx, id: Id, label_property_spec: LabelPropertySpec) -> Node {
-    Node { id, label_property_spec }
+pub fn node_c1(_ctx: &Ctx, id: Id, labels_record: LabelsRecord) -> Node {
+    Node { id, labels_record }
+}
+#[derive(Debug, Clone)]
+pub struct Edge {
+    pub id: Id,
+    pub source: IDENTIFIER,
+    pub labels_record: LabelsRecord,
+    pub target: IDENTIFIER,
+}
+pub fn edge_c1(
+    _ctx: &Ctx,
+    id: Id,
+    source: IDENTIFIER,
+    labels_record: LabelsRecord,
+    target: IDENTIFIER,
+) -> Edge {
+    Edge {
+        id,
+        source,
+        labels_record,
+        target,
+    }
 }
 pub type Id = IDENTIFIER;
 pub fn id_identifier(_ctx: &Ctx, identifier: IDENTIFIER) -> Id {
     identifier
 }
 #[derive(Debug, Clone)]
-pub struct LabelPropertySpec {
-    pub label_spec_opt: LabelSpecOpt,
-    pub property_spec_opt: PropertySpecOpt,
+pub struct LabelsRecord {
+    pub labels_opt: LabelsOpt,
+    pub record_opt: RecordOpt,
 }
-pub fn label_property_spec_c1(
-    _ctx: &Ctx,
-    label_spec_opt: LabelSpecOpt,
-    property_spec_opt: PropertySpecOpt,
-) -> LabelPropertySpec {
-    LabelPropertySpec {
-        label_spec_opt,
-        property_spec_opt,
+pub fn labels_record_c1(_ctx: &Ctx, labels_opt: LabelsOpt, record_opt: RecordOpt) -> LabelsRecord {
+    LabelsRecord {
+        labels_opt,
+        record_opt,
     }
 }
-pub type LabelSpecOpt = Option<LabelSpec>;
-pub fn label_spec_opt_label_spec(_ctx: &Ctx, label_spec: LabelSpec) -> LabelSpecOpt {
-    Some(label_spec)
+pub type LabelsOpt = Option<Labels>;
+pub fn labels_opt_labels(_ctx: &Ctx, labels: Labels) -> LabelsOpt {
+    Some(labels)
 }
-pub fn label_spec_opt_empty(_ctx: &Ctx) -> LabelSpecOpt {
+pub fn labels_opt_empty(_ctx: &Ctx) -> LabelsOpt {
     None
 }
-pub type PropertySpecOpt = Option<PropertySpec>;
-pub fn property_spec_opt_property_spec(
-    _ctx: &Ctx,
-    property_spec: PropertySpec,
-) -> PropertySpecOpt {
-    Some(property_spec)
+pub type RecordOpt = Option<Record>;
+pub fn record_opt_record(_ctx: &Ctx, record: Record) -> RecordOpt {
+    Some(record)
 }
-pub fn property_spec_opt_empty(_ctx: &Ctx) -> PropertySpecOpt {
+pub fn record_opt_empty(_ctx: &Ctx) -> RecordOpt {
     None
 }
-pub type LabelSpec = IDENTIFIER1;
-pub fn label_spec_identifier1(_ctx: &Ctx, identifier1: IDENTIFIER1) -> LabelSpec {
+pub type Labels = IDENTIFIER1;
+pub fn labels_identifier1(_ctx: &Ctx, identifier1: IDENTIFIER1) -> Labels {
     identifier1
 }
 pub type IDENTIFIER1 = Vec<IDENTIFIER>;
@@ -94,8 +123,8 @@ pub fn identifier1_c1(
 pub fn identifier1_identifier(_ctx: &Ctx, identifier: IDENTIFIER) -> IDENTIFIER1 {
     vec![identifier]
 }
-pub type PropertySpec = Properties;
-pub fn property_spec_properties(_ctx: &Ctx, properties: Properties) -> PropertySpec {
+pub type Record = Properties;
+pub fn record_properties(_ctx: &Ctx, properties: Properties) -> Record {
     properties
 }
 pub type Properties = Property1;
@@ -103,11 +132,7 @@ pub fn properties_property1(_ctx: &Ctx, property1: Property1) -> Properties {
     property1
 }
 pub type Property1 = Vec<Property>;
-pub fn property1_c1(
-    _ctx: &Ctx,
-    mut property1: Property1,
-    property: Property,
-) -> Property1 {
+pub fn property1_c1(_ctx: &Ctx, mut property1: Property1, property: Property) -> Property1 {
     property1.push(property);
     property1
 }
@@ -150,17 +175,11 @@ pub fn single_value1_c1(
     single_value1.push(single_value);
     single_value1
 }
-pub fn single_value1_single_value(
-    _ctx: &Ctx,
-    single_value: SingleValue,
-) -> SingleValue1 {
+pub fn single_value1_single_value(_ctx: &Ctx, single_value: SingleValue) -> SingleValue1 {
     vec![single_value]
 }
 pub type SingleValue0 = Option<SingleValue1>;
-pub fn single_value0_single_value1(
-    _ctx: &Ctx,
-    single_value1: SingleValue1,
-) -> SingleValue0 {
+pub fn single_value0_single_value1(_ctx: &Ctx, single_value1: SingleValue1) -> SingleValue0 {
     Some(single_value1)
 }
 pub fn single_value0_empty(_ctx: &Ctx) -> SingleValue0 {
@@ -171,10 +190,7 @@ pub enum SingleValue {
     StringValue(QUOTED_STRING),
     NumberValue(NUMBER),
 }
-pub fn single_value_string_value(
-    _ctx: &Ctx,
-    quoted_string: QUOTED_STRING,
-) -> SingleValue {
+pub fn single_value_string_value(_ctx: &Ctx, quoted_string: QUOTED_STRING) -> SingleValue {
     SingleValue::StringValue(quoted_string)
 }
 pub fn single_value_number_value(_ctx: &Ctx, number: NUMBER) -> SingleValue {
