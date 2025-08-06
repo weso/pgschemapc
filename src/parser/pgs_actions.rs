@@ -1,7 +1,7 @@
+use super::pgs::{Context, TokenKind};
 /// This file is maintained by rustemo but can be modified manually.
 /// All manual changes will be preserved except non-doc comments.
 use rustemo::Token as RustemoToken;
-use super::pgs::{TokenKind, Context};
 pub type Input = str;
 pub type Ctx<'i> = Context<'i, Input>;
 #[allow(dead_code)]
@@ -40,22 +40,13 @@ pub enum CreateType {
     CreateEdgeType(CreateEdgeType),
     CreateGraphType(CreateGraphType),
 }
-pub fn create_type_create_node_type(
-    _ctx: &Ctx,
-    create_node_type: CreateNodeType,
-) -> CreateType {
+pub fn create_type_create_node_type(_ctx: &Ctx, create_node_type: CreateNodeType) -> CreateType {
     CreateType::CreateNodeType(create_node_type)
 }
-pub fn create_type_create_edge_type(
-    _ctx: &Ctx,
-    create_edge_type: CreateEdgeType,
-) -> CreateType {
+pub fn create_type_create_edge_type(_ctx: &Ctx, create_edge_type: CreateEdgeType) -> CreateType {
     CreateType::CreateEdgeType(create_edge_type)
 }
-pub fn create_type_create_graph_type(
-    _ctx: &Ctx,
-    create_graph_type: CreateGraphType,
-) -> CreateType {
+pub fn create_type_create_graph_type(_ctx: &Ctx, create_graph_type: CreateGraphType) -> CreateType {
     CreateType::CreateGraphType(create_graph_type)
 }
 pub type CreateNodeType = NodeType;
@@ -67,10 +58,7 @@ pub fn create_edge_type_edge_type(_ctx: &Ctx, edge_type: EdgeType) -> CreateEdge
     edge_type
 }
 pub type CreateGraphType = GraphType;
-pub fn create_graph_type_graph_type(
-    _ctx: &Ctx,
-    graph_type: GraphType,
-) -> CreateGraphType {
+pub fn create_graph_type_graph_type(_ctx: &Ctx, graph_type: GraphType) -> CreateGraphType {
     graph_type
 }
 #[derive(Debug, Clone)]
@@ -147,10 +135,7 @@ pub fn label_spec_opt_empty(_ctx: &Ctx) -> LabelSpecOpt {
     None
 }
 pub type PropertySpecOpt = Option<PropertySpec>;
-pub fn property_spec_opt_property_spec(
-    _ctx: &Ctx,
-    property_spec: PropertySpec,
-) -> PropertySpecOpt {
+pub fn property_spec_opt_property_spec(_ctx: &Ctx, property_spec: PropertySpec) -> PropertySpecOpt {
     Some(property_spec)
 }
 pub fn property_spec_opt_empty(_ctx: &Ctx) -> PropertySpecOpt {
@@ -165,21 +150,14 @@ pub struct Labels {
     pub single_label: SingleLabel,
     pub more_labels_opt: MoreLabelsOpt,
 }
-pub fn labels_c1(
-    _ctx: &Ctx,
-    single_label: SingleLabel,
-    more_labels_opt: MoreLabelsOpt,
-) -> Labels {
+pub fn labels_c1(_ctx: &Ctx, single_label: SingleLabel, more_labels_opt: MoreLabelsOpt) -> Labels {
     Labels {
         single_label,
         more_labels_opt,
     }
 }
 pub type MoreLabelsOpt = Option<MoreLabels>;
-pub fn more_labels_opt_more_labels(
-    _ctx: &Ctx,
-    more_labels: MoreLabels,
-) -> MoreLabelsOpt {
+pub fn more_labels_opt_more_labels(_ctx: &Ctx, more_labels: MoreLabels) -> MoreLabelsOpt {
     Some(more_labels)
 }
 pub fn more_labels_opt_empty(_ctx: &Ctx) -> MoreLabelsOpt {
@@ -257,11 +235,7 @@ pub enum Properties {
     Paren(Box<Properties>),
     BaseProperty(BaseProperty),
 }
-pub fn properties_each_of(
-    _ctx: &Ctx,
-    left: Properties,
-    right: Properties,
-) -> Properties {
+pub fn properties_each_of(_ctx: &Ctx, left: Properties, right: Properties) -> Properties {
     Properties::EachOf(EachOf {
         left: Box::new(left),
         right: Box::new(right),
@@ -314,11 +288,7 @@ pub struct TypeSpec {
     pub simple_type: SimpleType,
     pub more_types_opt: MoreTypesOpt,
 }
-pub fn type_spec_c1(
-    _ctx: &Ctx,
-    simple_type: SimpleType,
-    more_types_opt: MoreTypesOpt,
-) -> TypeSpec {
+pub fn type_spec_c1(_ctx: &Ctx, simple_type: SimpleType, more_types_opt: MoreTypesOpt) -> TypeSpec {
     TypeSpec {
         simple_type,
         more_types_opt,
@@ -389,26 +359,23 @@ pub enum SimpleType {
     Any(CheckOpt),
     Cond(Cond),
 }
-pub fn simple_type_string_spec(
-    _ctx: &Ctx,
-    card_opt: CardOpt,
-    check_opt: CheckOpt,
-) -> SimpleType {
-    SimpleType::StringSpec(StringSpec { card_opt, check_opt })
+pub fn simple_type_string_spec(_ctx: &Ctx, card_opt: CardOpt, check_opt: CheckOpt) -> SimpleType {
+    SimpleType::StringSpec(StringSpec {
+        card_opt,
+        check_opt,
+    })
 }
-pub fn simple_type_integer(
-    _ctx: &Ctx,
-    card_opt: CardOpt,
-    check_opt: CheckOpt,
-) -> SimpleType {
-    SimpleType::Integer(Integer { card_opt, check_opt })
+pub fn simple_type_integer(_ctx: &Ctx, card_opt: CardOpt, check_opt: CheckOpt) -> SimpleType {
+    SimpleType::Integer(Integer {
+        card_opt,
+        check_opt,
+    })
 }
-pub fn simple_type_date(
-    _ctx: &Ctx,
-    card_opt: CardOpt,
-    check_opt: CheckOpt,
-) -> SimpleType {
-    SimpleType::Date(Date { card_opt, check_opt })
+pub fn simple_type_date(_ctx: &Ctx, card_opt: CardOpt, check_opt: CheckOpt) -> SimpleType {
+    SimpleType::Date(Date {
+        card_opt,
+        check_opt,
+    })
 }
 pub fn simple_type_any(_ctx: &Ctx, check_opt: CheckOpt) -> SimpleType {
     SimpleType::Any(check_opt)
@@ -541,10 +508,7 @@ pub enum SingleValue {
     StringValue(QUOTED_STRING),
     NumberValue(NUMBER),
 }
-pub fn single_value_string_value(
-    _ctx: &Ctx,
-    quoted_string: QUOTED_STRING,
-) -> SingleValue {
+pub fn single_value_string_value(_ctx: &Ctx, quoted_string: QUOTED_STRING) -> SingleValue {
     SingleValue::StringValue(quoted_string)
 }
 pub fn single_value_number_value(_ctx: &Ctx, number: NUMBER) -> SingleValue {
