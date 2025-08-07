@@ -3,14 +3,15 @@ mod card;
 mod cli;
 mod edge;
 mod edge_id;
+mod edge_type;
 mod evidence;
 mod formal_base_type;
-mod formal_graph_type;
 mod key;
 mod label_property_spec;
 mod node;
 mod node_id;
 mod pg;
+mod pgs;
 mod pgs_error;
 mod property_value_spec;
 mod record;
@@ -24,11 +25,10 @@ mod value_type;
 use anyhow::*;
 use clap::Parser;
 use cli::{Cli, Command};
-use pgschemapc::{
-    formal_graph_type::FormalGraphType,
-    parser::{map_builder::MapBuilder, pg_builder::PgBuilder, pgs_builder::PgsBuilder},
-};
+use pgschemapc::parser::{map_builder::MapBuilder, pg_builder::PgBuilder, pgs_builder::PgsBuilder};
 use std::result::Result::Ok;
+
+use crate::pgs::PropertyGraphSchema;
 
 // src/main.rs
 fn main() -> Result<()> {
@@ -79,15 +79,16 @@ fn run_validate(graph_path: &str, schema_path: &str, map_path: &str) -> Result<(
     Ok(())
 }
 
-fn get_schema(path: &str) -> Result<FormalGraphType> {
+fn get_schema(path: &str) -> Result<pgschemapc::pgs::PropertyGraphSchema> {
     let schema_content = std::fs::read_to_string(path)
         .with_context(|| format!("Failed to read schema file: {}", path))?;
-    let schema: FormalGraphType = match PgsBuilder::new().parse_pgs(schema_content.as_str()) {
-        Ok(schema) => schema,
-        Err(e) => {
-            bail!("Failed to parse schema: {}", e);
-        }
-    };
+    let schema: pgschemapc::pgs::PropertyGraphSchema =
+        match PgsBuilder::new().parse_pgs(schema_content.as_str()) {
+            Ok(schema) => schema,
+            Err(e) => {
+                bail!("Failed to parse schema: {}", e);
+            }
+        };
     Ok(schema)
 }
 
@@ -198,6 +199,17 @@ mod tests {
             "tests/email.pgs",
             "tests/email.map",
             "tests/email.result_map",
+        );
+    }
+
+    #[test]
+    fn edge() {
+        // It checks regexes
+        test_case(
+            "tests/edge.pg",
+            "tests/edge.pgs",
+            "tests/edge.map",
+            "tests/edge.result_map",
         );
     }
 

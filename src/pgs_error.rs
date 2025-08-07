@@ -19,6 +19,12 @@ pub enum PgsError {
     #[error("Not found edge with label: {label}")]
     MissingEdgeLabel { label: String },
 
+    #[error("Not found node/edge with label: {label}")]
+    MissingNodeEdgeLabel { label: String },
+
+    #[error("Not found node/edge type with label: {label}")]
+    MissingNodeEdgeTypeLabel { label: String },
+
     #[error("Key not found in RecordType: {key} in Closed record type {record_type}")]
     KeyNotFoundClosedRecordType { key: Key, record_type: String },
 
@@ -78,4 +84,23 @@ pub enum PgsError {
 
     #[error("Missing association: node {node}, type {type_name}")]
     MissingAssociation { node: String, type_name: String },
+
+    #[error("Duplicate edge type name: {type_name}")]
+    DuplicateEdgeTypeName { type_name: String },
+
+    #[error("Node {node} can't conform to edge type {edge_semantics}")]
+    NodeNotConformsEdgeType {
+        label: String,
+        type_name: String,
+        node: String,
+        edge_semantics: String,
+    },
+
+    #[error("Edge {edge} can't conform to node type {node_semantics}")]
+    EdgeNotConformsNodeType {
+        label: String,
+        type_name: String,
+        edge: String,
+        node_semantics: String,
+    },
 }

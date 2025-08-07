@@ -14,10 +14,10 @@ CreateGraphType:
     CREATE GRAPH TYPE GraphType ;
 
 NodeType:
-    "(" TypeName LabelPropertySpec ")" ;
+    "(" TypeName? LabelPropertySpec ")" ;
 
 EdgeType:
-    EndpointType "-[" TypeName LabelPropertySpec "]->" EndpointType ;
+    source=EndpointType "-[" TypeName? LabelPropertySpec "]->" target=EndpointType ;
 
 GraphType:
     TypeName "{" "}" ;

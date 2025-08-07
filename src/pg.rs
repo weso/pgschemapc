@@ -1,8 +1,9 @@
 use std::{
     collections::{HashMap, HashSet},
     fmt::Display,
-    path::Path,
 };
+
+use either::Either;
 
 use crate::{
     edge::Edge, edge_id::EdgeId, node::Node, node_id::NodeId, pgs_error::PgsError, record::Record,
@@ -51,6 +52,18 @@ impl PropertyGraph {
                 label: label.to_string(),
             })?;
         self.nodes.get(id).ok_or(PgsError::MissingNodeLabel {
+            label: label.to_string(),
+        })
+    }
+
+    pub fn get_node_edge_by_label(&self, label: &str) -> Result<Either<&Node, &Edge>, PgsError> {
+        if let Some(node) = self.get_node_by_label(label).ok() {
+            return Ok(Either::Left(node));
+        }
+        if let Some(edge) = self.get_edge_by_label(label).ok() {
+            return Ok(Either::Right(edge));
+        }
+        Err(PgsError::MissingNodeEdgeLabel {
             label: label.to_string(),
         })
     }
@@ -108,6 +121,7 @@ impl PropertyGraph {
     ) -> Result<(), PgsError> {
         let id = EdgeId::new(self.edge_id_counter);
         self.edge_id_counter += 1;
+        self.edge_names.insert(name_id, id.clone());
         let source_id = self.get_node_id(&source)?;
         let target_id = self.get_node_id(&target)?;
         let edge = Edge {
@@ -125,10 +139,24 @@ impl PropertyGraph {
 impl Display for PropertyGraph {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         for (node_id, node) in self.nodes.iter() {
-            writeln!(f, "Node {}: {}", node_id, node)?;
+            let node_id_str = node_id.to_string();
+            let node_label = self
+                .node_names
+                .iter()
+                .find(|(_, id)| *id == node_id)
+                .map(|(label, _)| label)
+                .unwrap_or(&node_id_str);
+            writeln!(f, "Node {}: {}", node_label, node)?;
         }
         for (edge_id, edge) in self.edges.iter() {
-            writeln!(f, "Edge {}: {}", edge_id, edge)?;
+            let edge_id_str = edge_id.to_string();
+            let edge_label = self
+                .edge_names
+                .iter()
+                .find(|(_, id)| *id == edge_id)
+                .map(|(label, _)| label)
+                .unwrap_or(&edge_id_str);
+            writeln!(f, "Edge {}: {}", edge_label, edge)?;
         }
         Ok(())
     }

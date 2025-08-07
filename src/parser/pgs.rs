@@ -18,7 +18,7 @@ use rustemo::{LRContext, LRParser};
 use std::fmt::Debug;
 use std::hash::Hash;
 pub type Input = str;
-const STATE_COUNT: usize = 151usize;
+const STATE_COUNT: usize = 152usize;
 const MAX_RECOGNIZERS: usize = 11usize;
 #[allow(dead_code)]
 const TERMINAL_COUNT: usize = 47usize;
@@ -93,6 +93,8 @@ pub enum ProdKind {
     CreateEdgeTypeP1,
     CreateGraphTypeP1,
     NodeTypeP1,
+    TypeNameOptP1,
+    TypeNameOptP2,
     EdgeTypeP1,
     GraphTypeP1,
     TypeNameP1,
@@ -185,9 +187,13 @@ impl std::fmt::Debug for ProdKind {
             ProdKind::CreateNodeTypeP1 => "CreateNodeType: CREATE NODE TYPE NodeType",
             ProdKind::CreateEdgeTypeP1 => "CreateEdgeType: CREATE EDGE TYPE EdgeType",
             ProdKind::CreateGraphTypeP1 => "CreateGraphType: CREATE GRAPH TYPE GraphType",
-            ProdKind::NodeTypeP1 => "NodeType: OPEN_PAREN TypeName LabelPropertySpec CLOSE_PAREN",
+            ProdKind::NodeTypeP1 => {
+                "NodeType: OPEN_PAREN TypeNameOpt LabelPropertySpec CLOSE_PAREN"
+            }
+            ProdKind::TypeNameOptP1 => "TypeNameOpt: TypeName",
+            ProdKind::TypeNameOptP2 => "TypeNameOpt: ",
             ProdKind::EdgeTypeP1 => {
-                "EdgeType: EndpointType OPEN_ARROW TypeName LabelPropertySpec CLOSE_ARROW EndpointType"
+                "EdgeType: EndpointType OPEN_ARROW TypeNameOpt LabelPropertySpec CLOSE_ARROW EndpointType"
             }
             ProdKind::GraphTypeP1 => "GraphType: TypeName OPEN_CURLY CLOSE_CURLY",
             ProdKind::TypeNameP1 => "TypeName: IDENTIFIER",
@@ -284,6 +290,7 @@ pub enum NonTermKind {
     CreateEdgeType,
     CreateGraphType,
     NodeType,
+    TypeNameOpt,
     EdgeType,
     GraphType,
     TypeName,
@@ -335,6 +342,8 @@ impl From<ProdKind> for NonTermKind {
             ProdKind::CreateEdgeTypeP1 => NonTermKind::CreateEdgeType,
             ProdKind::CreateGraphTypeP1 => NonTermKind::CreateGraphType,
             ProdKind::NodeTypeP1 => NonTermKind::NodeType,
+            ProdKind::TypeNameOptP1 => NonTermKind::TypeNameOpt,
+            ProdKind::TypeNameOptP2 => NonTermKind::TypeNameOpt,
             ProdKind::EdgeTypeP1 => NonTermKind::EdgeType,
             ProdKind::GraphTypeP1 => NonTermKind::GraphType,
             ProdKind::TypeNameP1 => NonTermKind::TypeName,
@@ -444,137 +453,138 @@ pub enum State {
     IDENTIFIERS21,
     GraphTypeS22,
     TypeNameS23,
-    TypeNameS24,
-    COLONS25,
-    LabelPropertySpecS26,
-    LabelSpecOptS27,
-    LabelSpecS28,
-    OPEN_ARROWS29,
-    OPEN_CURLYS30,
-    LabelPropertySpecS31,
-    IDENTIFIERS32,
-    ATS33,
-    LabelsS34,
-    SingleLabelS35,
-    CLOSE_PARENS36,
-    OPEN_CURLYS37,
-    PropertySpecOptS38,
-    PropertySpecS39,
-    TypeNameS40,
-    CLOSE_CURLYS41,
-    CLOSE_PARENS42,
-    IDENTIFIERS43,
-    BARS44,
-    AMPERSANDS45,
-    MoreLabelsOptS46,
-    MoreLabelsS47,
-    OPEN_PARENS48,
-    OPTIONALS49,
-    PropertiesS50,
-    OPTIONALOptS51,
-    LabelPropertySpecS52,
-    SingleLabelS53,
+    TypeNameOptS24,
+    TypeNameS25,
+    COLONS26,
+    LabelPropertySpecS27,
+    LabelSpecOptS28,
+    LabelSpecS29,
+    OPEN_ARROWS30,
+    OPEN_CURLYS31,
+    LabelPropertySpecS32,
+    IDENTIFIERS33,
+    ATS34,
+    LabelsS35,
+    SingleLabelS36,
+    CLOSE_PARENS37,
+    OPEN_CURLYS38,
+    PropertySpecOptS39,
+    PropertySpecS40,
+    TypeNameOptS41,
+    CLOSE_CURLYS42,
+    CLOSE_PARENS43,
+    IDENTIFIERS44,
+    BARS45,
+    AMPERSANDS46,
+    MoreLabelsOptS47,
+    MoreLabelsS48,
+    OPEN_PARENS49,
+    OPTIONALS50,
+    PropertiesS51,
+    OPTIONALOptS52,
+    LabelPropertySpecS53,
     SingleLabelS54,
-    PropertiesS55,
-    CLOSE_CURLYS56,
-    COMMAS57,
-    DOUBLE_BARS58,
-    IDENTIFIERS59,
-    PropertyS60,
-    keyS61,
-    CLOSE_ARROWS62,
-    MoreLabelsOptS63,
+    SingleLabelS55,
+    PropertiesS56,
+    CLOSE_CURLYS57,
+    COMMAS58,
+    DOUBLE_BARS59,
+    IDENTIFIERS60,
+    PropertyS61,
+    keyS62,
+    CLOSE_ARROWS63,
     MoreLabelsOptS64,
-    CLOSE_PARENS65,
-    PropertiesS66,
+    MoreLabelsOptS65,
+    CLOSE_PARENS66,
     PropertiesS67,
-    COLONS68,
-    EndpointTypeS69,
-    INTEGER_NAMES70,
-    STRING_NAMES71,
-    DATE_NAMES72,
-    CHECKS73,
-    ANYS74,
-    TypeSpecS75,
-    SimpleTypeS76,
-    OPEN_CURLYS77,
-    PLUSS78,
-    STARS79,
-    QUESTIONS80,
-    CardOptS81,
-    CardS82,
-    CardOptS83,
+    PropertiesS68,
+    COLONS69,
+    EndpointTypeS70,
+    INTEGER_NAMES71,
+    STRING_NAMES72,
+    DATE_NAMES73,
+    CHECKS74,
+    ANYS75,
+    TypeSpecS76,
+    SimpleTypeS77,
+    OPEN_CURLYS78,
+    PLUSS79,
+    STARS80,
+    QUESTIONS81,
+    CardOptS82,
+    CardS83,
     CardOptS84,
-    OPEN_PARENS85,
-    TRUES86,
-    FALSES87,
-    GTS88,
-    LTS89,
-    GES90,
-    LES91,
-    EQUALSS92,
-    REGEXS93,
-    NOTS94,
-    CondS95,
-    CHECKS96,
-    CheckOptS97,
-    CheckS98,
-    BARS99,
-    AMPERSANDS100,
-    MoreTypesOptS101,
-    MoreTypesS102,
-    NUMBERS103,
-    CheckOptS104,
+    CardOptS85,
+    OPEN_PARENS86,
+    TRUES87,
+    FALSES88,
+    GTS89,
+    LTS90,
+    GES91,
+    LES92,
+    EQUALSS93,
+    REGEXS94,
+    NOTS95,
+    CondS96,
+    CHECKS97,
+    CheckOptS98,
+    CheckS99,
+    BARS100,
+    AMPERSANDS101,
+    MoreTypesOptS102,
+    MoreTypesS103,
+    NUMBERS104,
     CheckOptS105,
     CheckOptS106,
-    CondS107,
-    NUMBERS108,
-    QUOTED_STRINGS109,
-    SingleValueS110,
+    CheckOptS107,
+    CondS108,
+    NUMBERS109,
+    QUOTED_STRINGS110,
     SingleValueS111,
     SingleValueS112,
     SingleValueS113,
     SingleValueS114,
-    QUOTED_STRINGS115,
-    CondS116,
-    ANDS117,
-    ORS118,
-    CondS119,
-    SimpleTypeS120,
+    SingleValueS115,
+    QUOTED_STRINGS116,
+    CondS117,
+    ANDS118,
+    ORS119,
+    CondS120,
     SimpleTypeS121,
-    COMMAS122,
-    CLOSE_PARENS123,
-    CondS124,
+    SimpleTypeS122,
+    COMMAS123,
+    CLOSE_PARENS124,
     CondS125,
-    MoreTypesOptS126,
+    CondS126,
     MoreTypesOptS127,
-    STARS128,
-    NUMBERS129,
-    MaxS130,
-    CLOSE_CURLYS131,
-    AUGLS132,
-    WSS133,
-    CommentLineS134,
-    START_COMMENTS135,
-    LayoutS136,
-    LayoutItem1S137,
-    LayoutItem0S138,
-    LayoutItemS139,
-    CommentS140,
-    WSS141,
-    NotCommentS142,
-    CommentS143,
-    CorncsS144,
-    Cornc1S145,
-    Cornc0S146,
-    CorncS147,
-    LayoutItemS148,
-    END_COMMENTS149,
-    CorncS150,
+    MoreTypesOptS128,
+    STARS129,
+    NUMBERS130,
+    MaxS131,
+    CLOSE_CURLYS132,
+    AUGLS133,
+    WSS134,
+    CommentLineS135,
+    START_COMMENTS136,
+    LayoutS137,
+    LayoutItem1S138,
+    LayoutItem0S139,
+    LayoutItemS140,
+    CommentS141,
+    WSS142,
+    NotCommentS143,
+    CommentS144,
+    CorncsS145,
+    Cornc1S146,
+    Cornc0S147,
+    CorncS148,
+    LayoutItemS149,
+    END_COMMENTS150,
+    CorncS151,
 }
 impl StateT for State {
     fn default_layout() -> Option<Self> {
-        Some(State::AUGLS132)
+        Some(State::AUGLS133)
     }
 }
 impl From<State> for usize {
@@ -609,133 +619,134 @@ impl std::fmt::Debug for State {
             State::IDENTIFIERS21 => "21:IDENTIFIER",
             State::GraphTypeS22 => "22:GraphType",
             State::TypeNameS23 => "23:TypeName",
-            State::TypeNameS24 => "24:TypeName",
-            State::COLONS25 => "25:COLON",
-            State::LabelPropertySpecS26 => "26:LabelPropertySpec",
-            State::LabelSpecOptS27 => "27:LabelSpecOpt",
-            State::LabelSpecS28 => "28:LabelSpec",
-            State::OPEN_ARROWS29 => "29:OPEN_ARROW",
-            State::OPEN_CURLYS30 => "30:OPEN_CURLY",
-            State::LabelPropertySpecS31 => "31:LabelPropertySpec",
-            State::IDENTIFIERS32 => "32:IDENTIFIER",
-            State::ATS33 => "33:AT",
-            State::LabelsS34 => "34:Labels",
-            State::SingleLabelS35 => "35:SingleLabel",
-            State::CLOSE_PARENS36 => "36:CLOSE_PAREN",
-            State::OPEN_CURLYS37 => "37:OPEN_CURLY",
-            State::PropertySpecOptS38 => "38:PropertySpecOpt",
-            State::PropertySpecS39 => "39:PropertySpec",
-            State::TypeNameS40 => "40:TypeName",
-            State::CLOSE_CURLYS41 => "41:CLOSE_CURLY",
-            State::CLOSE_PARENS42 => "42:CLOSE_PAREN",
-            State::IDENTIFIERS43 => "43:IDENTIFIER",
-            State::BARS44 => "44:BAR",
-            State::AMPERSANDS45 => "45:AMPERSAND",
-            State::MoreLabelsOptS46 => "46:MoreLabelsOpt",
-            State::MoreLabelsS47 => "47:MoreLabels",
-            State::OPEN_PARENS48 => "48:OPEN_PAREN",
-            State::OPTIONALS49 => "49:OPTIONAL",
-            State::PropertiesS50 => "50:Properties",
-            State::OPTIONALOptS51 => "51:OPTIONALOpt",
-            State::LabelPropertySpecS52 => "52:LabelPropertySpec",
-            State::SingleLabelS53 => "53:SingleLabel",
+            State::TypeNameOptS24 => "24:TypeNameOpt",
+            State::TypeNameS25 => "25:TypeName",
+            State::COLONS26 => "26:COLON",
+            State::LabelPropertySpecS27 => "27:LabelPropertySpec",
+            State::LabelSpecOptS28 => "28:LabelSpecOpt",
+            State::LabelSpecS29 => "29:LabelSpec",
+            State::OPEN_ARROWS30 => "30:OPEN_ARROW",
+            State::OPEN_CURLYS31 => "31:OPEN_CURLY",
+            State::LabelPropertySpecS32 => "32:LabelPropertySpec",
+            State::IDENTIFIERS33 => "33:IDENTIFIER",
+            State::ATS34 => "34:AT",
+            State::LabelsS35 => "35:Labels",
+            State::SingleLabelS36 => "36:SingleLabel",
+            State::CLOSE_PARENS37 => "37:CLOSE_PAREN",
+            State::OPEN_CURLYS38 => "38:OPEN_CURLY",
+            State::PropertySpecOptS39 => "39:PropertySpecOpt",
+            State::PropertySpecS40 => "40:PropertySpec",
+            State::TypeNameOptS41 => "41:TypeNameOpt",
+            State::CLOSE_CURLYS42 => "42:CLOSE_CURLY",
+            State::CLOSE_PARENS43 => "43:CLOSE_PAREN",
+            State::IDENTIFIERS44 => "44:IDENTIFIER",
+            State::BARS45 => "45:BAR",
+            State::AMPERSANDS46 => "46:AMPERSAND",
+            State::MoreLabelsOptS47 => "47:MoreLabelsOpt",
+            State::MoreLabelsS48 => "48:MoreLabels",
+            State::OPEN_PARENS49 => "49:OPEN_PAREN",
+            State::OPTIONALS50 => "50:OPTIONAL",
+            State::PropertiesS51 => "51:Properties",
+            State::OPTIONALOptS52 => "52:OPTIONALOpt",
+            State::LabelPropertySpecS53 => "53:LabelPropertySpec",
             State::SingleLabelS54 => "54:SingleLabel",
-            State::PropertiesS55 => "55:Properties",
-            State::CLOSE_CURLYS56 => "56:CLOSE_CURLY",
-            State::COMMAS57 => "57:COMMA",
-            State::DOUBLE_BARS58 => "58:DOUBLE_BAR",
-            State::IDENTIFIERS59 => "59:IDENTIFIER",
-            State::PropertyS60 => "60:Property",
-            State::keyS61 => "61:key",
-            State::CLOSE_ARROWS62 => "62:CLOSE_ARROW",
-            State::MoreLabelsOptS63 => "63:MoreLabelsOpt",
+            State::SingleLabelS55 => "55:SingleLabel",
+            State::PropertiesS56 => "56:Properties",
+            State::CLOSE_CURLYS57 => "57:CLOSE_CURLY",
+            State::COMMAS58 => "58:COMMA",
+            State::DOUBLE_BARS59 => "59:DOUBLE_BAR",
+            State::IDENTIFIERS60 => "60:IDENTIFIER",
+            State::PropertyS61 => "61:Property",
+            State::keyS62 => "62:key",
+            State::CLOSE_ARROWS63 => "63:CLOSE_ARROW",
             State::MoreLabelsOptS64 => "64:MoreLabelsOpt",
-            State::CLOSE_PARENS65 => "65:CLOSE_PAREN",
-            State::PropertiesS66 => "66:Properties",
+            State::MoreLabelsOptS65 => "65:MoreLabelsOpt",
+            State::CLOSE_PARENS66 => "66:CLOSE_PAREN",
             State::PropertiesS67 => "67:Properties",
-            State::COLONS68 => "68:COLON",
-            State::EndpointTypeS69 => "69:EndpointType",
-            State::INTEGER_NAMES70 => "70:INTEGER_NAME",
-            State::STRING_NAMES71 => "71:STRING_NAME",
-            State::DATE_NAMES72 => "72:DATE_NAME",
-            State::CHECKS73 => "73:CHECK",
-            State::ANYS74 => "74:ANY",
-            State::TypeSpecS75 => "75:TypeSpec",
-            State::SimpleTypeS76 => "76:SimpleType",
-            State::OPEN_CURLYS77 => "77:OPEN_CURLY",
-            State::PLUSS78 => "78:PLUS",
-            State::STARS79 => "79:STAR",
-            State::QUESTIONS80 => "80:QUESTION",
-            State::CardOptS81 => "81:CardOpt",
-            State::CardS82 => "82:Card",
-            State::CardOptS83 => "83:CardOpt",
+            State::PropertiesS68 => "68:Properties",
+            State::COLONS69 => "69:COLON",
+            State::EndpointTypeS70 => "70:EndpointType",
+            State::INTEGER_NAMES71 => "71:INTEGER_NAME",
+            State::STRING_NAMES72 => "72:STRING_NAME",
+            State::DATE_NAMES73 => "73:DATE_NAME",
+            State::CHECKS74 => "74:CHECK",
+            State::ANYS75 => "75:ANY",
+            State::TypeSpecS76 => "76:TypeSpec",
+            State::SimpleTypeS77 => "77:SimpleType",
+            State::OPEN_CURLYS78 => "78:OPEN_CURLY",
+            State::PLUSS79 => "79:PLUS",
+            State::STARS80 => "80:STAR",
+            State::QUESTIONS81 => "81:QUESTION",
+            State::CardOptS82 => "82:CardOpt",
+            State::CardS83 => "83:Card",
             State::CardOptS84 => "84:CardOpt",
-            State::OPEN_PARENS85 => "85:OPEN_PAREN",
-            State::TRUES86 => "86:TRUE",
-            State::FALSES87 => "87:FALSE",
-            State::GTS88 => "88:GT",
-            State::LTS89 => "89:LT",
-            State::GES90 => "90:GE",
-            State::LES91 => "91:LE",
-            State::EQUALSS92 => "92:EQUALS",
-            State::REGEXS93 => "93:REGEX",
-            State::NOTS94 => "94:NOT",
-            State::CondS95 => "95:Cond",
-            State::CHECKS96 => "96:CHECK",
-            State::CheckOptS97 => "97:CheckOpt",
-            State::CheckS98 => "98:Check",
-            State::BARS99 => "99:BAR",
-            State::AMPERSANDS100 => "100:AMPERSAND",
-            State::MoreTypesOptS101 => "101:MoreTypesOpt",
-            State::MoreTypesS102 => "102:MoreTypes",
-            State::NUMBERS103 => "103:NUMBER",
-            State::CheckOptS104 => "104:CheckOpt",
+            State::CardOptS85 => "85:CardOpt",
+            State::OPEN_PARENS86 => "86:OPEN_PAREN",
+            State::TRUES87 => "87:TRUE",
+            State::FALSES88 => "88:FALSE",
+            State::GTS89 => "89:GT",
+            State::LTS90 => "90:LT",
+            State::GES91 => "91:GE",
+            State::LES92 => "92:LE",
+            State::EQUALSS93 => "93:EQUALS",
+            State::REGEXS94 => "94:REGEX",
+            State::NOTS95 => "95:NOT",
+            State::CondS96 => "96:Cond",
+            State::CHECKS97 => "97:CHECK",
+            State::CheckOptS98 => "98:CheckOpt",
+            State::CheckS99 => "99:Check",
+            State::BARS100 => "100:BAR",
+            State::AMPERSANDS101 => "101:AMPERSAND",
+            State::MoreTypesOptS102 => "102:MoreTypesOpt",
+            State::MoreTypesS103 => "103:MoreTypes",
+            State::NUMBERS104 => "104:NUMBER",
             State::CheckOptS105 => "105:CheckOpt",
             State::CheckOptS106 => "106:CheckOpt",
-            State::CondS107 => "107:Cond",
-            State::NUMBERS108 => "108:NUMBER",
-            State::QUOTED_STRINGS109 => "109:QUOTED_STRING",
-            State::SingleValueS110 => "110:SingleValue",
+            State::CheckOptS107 => "107:CheckOpt",
+            State::CondS108 => "108:Cond",
+            State::NUMBERS109 => "109:NUMBER",
+            State::QUOTED_STRINGS110 => "110:QUOTED_STRING",
             State::SingleValueS111 => "111:SingleValue",
             State::SingleValueS112 => "112:SingleValue",
             State::SingleValueS113 => "113:SingleValue",
             State::SingleValueS114 => "114:SingleValue",
-            State::QUOTED_STRINGS115 => "115:QUOTED_STRING",
-            State::CondS116 => "116:Cond",
-            State::ANDS117 => "117:AND",
-            State::ORS118 => "118:OR",
-            State::CondS119 => "119:Cond",
-            State::SimpleTypeS120 => "120:SimpleType",
+            State::SingleValueS115 => "115:SingleValue",
+            State::QUOTED_STRINGS116 => "116:QUOTED_STRING",
+            State::CondS117 => "117:Cond",
+            State::ANDS118 => "118:AND",
+            State::ORS119 => "119:OR",
+            State::CondS120 => "120:Cond",
             State::SimpleTypeS121 => "121:SimpleType",
-            State::COMMAS122 => "122:COMMA",
-            State::CLOSE_PARENS123 => "123:CLOSE_PAREN",
-            State::CondS124 => "124:Cond",
+            State::SimpleTypeS122 => "122:SimpleType",
+            State::COMMAS123 => "123:COMMA",
+            State::CLOSE_PARENS124 => "124:CLOSE_PAREN",
             State::CondS125 => "125:Cond",
-            State::MoreTypesOptS126 => "126:MoreTypesOpt",
+            State::CondS126 => "126:Cond",
             State::MoreTypesOptS127 => "127:MoreTypesOpt",
-            State::STARS128 => "128:STAR",
-            State::NUMBERS129 => "129:NUMBER",
-            State::MaxS130 => "130:Max",
-            State::CLOSE_CURLYS131 => "131:CLOSE_CURLY",
-            State::AUGLS132 => "132:AUGL",
-            State::WSS133 => "133:WS",
-            State::CommentLineS134 => "134:CommentLine",
-            State::START_COMMENTS135 => "135:START_COMMENT",
-            State::LayoutS136 => "136:Layout",
-            State::LayoutItem1S137 => "137:LayoutItem1",
-            State::LayoutItem0S138 => "138:LayoutItem0",
-            State::LayoutItemS139 => "139:LayoutItem",
-            State::CommentS140 => "140:Comment",
-            State::WSS141 => "141:WS",
-            State::NotCommentS142 => "142:NotComment",
-            State::CommentS143 => "143:Comment",
-            State::CorncsS144 => "144:Corncs",
-            State::Cornc1S145 => "145:Cornc1",
-            State::Cornc0S146 => "146:Cornc0",
-            State::CorncS147 => "147:Cornc",
-            State::LayoutItemS148 => "148:LayoutItem",
-            State::END_COMMENTS149 => "149:END_COMMENT",
-            State::CorncS150 => "150:Cornc",
+            State::MoreTypesOptS128 => "128:MoreTypesOpt",
+            State::STARS129 => "129:STAR",
+            State::NUMBERS130 => "130:NUMBER",
+            State::MaxS131 => "131:Max",
+            State::CLOSE_CURLYS132 => "132:CLOSE_CURLY",
+            State::AUGLS133 => "133:AUGL",
+            State::WSS134 => "134:WS",
+            State::CommentLineS135 => "135:CommentLine",
+            State::START_COMMENTS136 => "136:START_COMMENT",
+            State::LayoutS137 => "137:Layout",
+            State::LayoutItem1S138 => "138:LayoutItem1",
+            State::LayoutItem0S139 => "139:LayoutItem0",
+            State::LayoutItemS140 => "140:LayoutItem",
+            State::CommentS141 => "141:Comment",
+            State::WSS142 => "142:WS",
+            State::NotCommentS143 => "143:NotComment",
+            State::CommentS144 => "144:Comment",
+            State::CorncsS145 => "145:Corncs",
+            State::Cornc1S146 => "146:Cornc1",
+            State::Cornc0S147 => "147:Cornc0",
+            State::CorncS148 => "148:Cornc",
+            State::LayoutItemS149 => "149:LayoutItem",
+            State::END_COMMENTS150 => "150:END_COMMENT",
+            State::CorncS151 => "151:Cornc",
         };
         write!(f, "{name}")
     }
@@ -799,6 +810,7 @@ pub enum NonTerminal {
     CreateEdgeType(pgs_actions::CreateEdgeType),
     CreateGraphType(pgs_actions::CreateGraphType),
     NodeType(pgs_actions::NodeType),
+    TypeNameOpt(pgs_actions::TypeNameOpt),
     EdgeType(pgs_actions::EdgeType),
     GraphType(pgs_actions::GraphType),
     TypeName(pgs_actions::TypeName),
@@ -941,6 +953,9 @@ fn action_createtype_s15(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> 
 fn action_open_paren_s16(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::IDENTIFIER => Vec::from(&[Shift(State::IDENTIFIERS21)]),
+        TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::TypeNameOptP2, 0usize)]),
+        TK::OPEN_CURLY => Vec::from(&[Reduce(PK::TypeNameOptP2, 0usize)]),
+        TK::COLON => Vec::from(&[Reduce(PK::TypeNameOptP2, 0usize)]),
         _ => vec![],
     }
 }
@@ -955,7 +970,7 @@ fn action_open_paren_s18(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> 
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::LabelSpecOptP2, 0usize)]),
         TK::OPEN_CURLY => Vec::from(&[Reduce(PK::LabelSpecOptP2, 0usize)]),
-        TK::COLON => Vec::from(&[Shift(State::COLONS25)]),
+        TK::COLON => Vec::from(&[Shift(State::COLONS26)]),
         _ => vec![],
     }
 }
@@ -968,7 +983,7 @@ fn action_edgetype_s19(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
 }
 fn action_endpointtype_s20(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::OPEN_ARROW => Vec::from(&[Shift(State::OPEN_ARROWS29)]),
+        TK::OPEN_ARROW => Vec::from(&[Shift(State::OPEN_ARROWS30)]),
         _ => vec![],
     }
 }
@@ -990,40 +1005,49 @@ fn action_graphtype_s22(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
 }
 fn action_typename_s23(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::OPEN_CURLY => Vec::from(&[Shift(State::OPEN_CURLYS30)]),
+        TK::OPEN_CURLY => Vec::from(&[Shift(State::OPEN_CURLYS31)]),
         _ => vec![],
     }
 }
-fn action_typename_s24(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_typenameopt_s24(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::LabelSpecOptP2, 0usize)]),
         TK::OPEN_CURLY => Vec::from(&[Reduce(PK::LabelSpecOptP2, 0usize)]),
-        TK::COLON => Vec::from(&[Shift(State::COLONS25)]),
+        TK::COLON => Vec::from(&[Shift(State::COLONS26)]),
         _ => vec![],
     }
 }
-fn action_colon_s25(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_typename_s25(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::IDENTIFIER => Vec::from(&[Shift(State::IDENTIFIERS32)]),
-        TK::AT => Vec::from(&[Shift(State::ATS33)]),
+        TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::TypeNameOptP1, 1usize)]),
+        TK::CLOSE_ARROW => Vec::from(&[Reduce(PK::TypeNameOptP1, 1usize)]),
+        TK::OPEN_CURLY => Vec::from(&[Reduce(PK::TypeNameOptP1, 1usize)]),
+        TK::COLON => Vec::from(&[Reduce(PK::TypeNameOptP1, 1usize)]),
         _ => vec![],
     }
 }
-fn action_labelpropertyspec_s26(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_colon_s26(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::CLOSE_PAREN => Vec::from(&[Shift(State::CLOSE_PARENS36)]),
+        TK::IDENTIFIER => Vec::from(&[Shift(State::IDENTIFIERS33)]),
+        TK::AT => Vec::from(&[Shift(State::ATS34)]),
         _ => vec![],
     }
 }
-fn action_labelspecopt_s27(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_labelpropertyspec_s27(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::CLOSE_PAREN => Vec::from(&[Shift(State::CLOSE_PARENS37)]),
+        _ => vec![],
+    }
+}
+fn action_labelspecopt_s28(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::PropertySpecOptP2, 0usize)]),
         TK::CLOSE_ARROW => Vec::from(&[Reduce(PK::PropertySpecOptP2, 0usize)]),
-        TK::OPEN_CURLY => Vec::from(&[Shift(State::OPEN_CURLYS37)]),
+        TK::OPEN_CURLY => Vec::from(&[Shift(State::OPEN_CURLYS38)]),
         _ => vec![],
     }
 }
-fn action_labelspec_s28(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_labelspec_s29(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::LabelSpecOptP1, 1usize)]),
         TK::CLOSE_ARROW => Vec::from(&[Reduce(PK::LabelSpecOptP1, 1usize)]),
@@ -1031,25 +1055,28 @@ fn action_labelspec_s28(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
         _ => vec![],
     }
 }
-fn action_open_arrow_s29(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_open_arrow_s30(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::IDENTIFIER => Vec::from(&[Shift(State::IDENTIFIERS21)]),
+        TK::CLOSE_ARROW => Vec::from(&[Reduce(PK::TypeNameOptP2, 0usize)]),
+        TK::OPEN_CURLY => Vec::from(&[Reduce(PK::TypeNameOptP2, 0usize)]),
+        TK::COLON => Vec::from(&[Reduce(PK::TypeNameOptP2, 0usize)]),
         _ => vec![],
     }
 }
-fn action_open_curly_s30(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_open_curly_s31(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::CLOSE_CURLY => Vec::from(&[Shift(State::CLOSE_CURLYS41)]),
+        TK::CLOSE_CURLY => Vec::from(&[Shift(State::CLOSE_CURLYS42)]),
         _ => vec![],
     }
 }
-fn action_labelpropertyspec_s31(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_labelpropertyspec_s32(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::CLOSE_PAREN => Vec::from(&[Shift(State::CLOSE_PARENS42)]),
+        TK::CLOSE_PAREN => Vec::from(&[Shift(State::CLOSE_PARENS43)]),
         _ => vec![],
     }
 }
-fn action_identifier_s32(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_identifier_s33(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::SingleLabelSingleLabel, 1usize)]),
         TK::CLOSE_ARROW => Vec::from(&[Reduce(PK::SingleLabelSingleLabel, 1usize)]),
@@ -1059,13 +1086,13 @@ fn action_identifier_s32(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> 
         _ => vec![],
     }
 }
-fn action_at_s33(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_at_s34(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::IDENTIFIER => Vec::from(&[Shift(State::IDENTIFIERS43)]),
+        TK::IDENTIFIER => Vec::from(&[Shift(State::IDENTIFIERS44)]),
         _ => vec![],
     }
 }
-fn action_labels_s34(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_labels_s35(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::LabelSpecP1, 2usize)]),
         TK::CLOSE_ARROW => Vec::from(&[Reduce(PK::LabelSpecP1, 2usize)]),
@@ -1073,17 +1100,17 @@ fn action_labels_s34(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
         _ => vec![],
     }
 }
-fn action_singlelabel_s35(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_singlelabel_s36(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::MoreLabelsOptP2, 0usize)]),
         TK::CLOSE_ARROW => Vec::from(&[Reduce(PK::MoreLabelsOptP2, 0usize)]),
         TK::OPEN_CURLY => Vec::from(&[Reduce(PK::MoreLabelsOptP2, 0usize)]),
-        TK::BAR => Vec::from(&[Shift(State::BARS44)]),
-        TK::AMPERSAND => Vec::from(&[Shift(State::AMPERSANDS45)]),
+        TK::BAR => Vec::from(&[Shift(State::BARS45)]),
+        TK::AMPERSAND => Vec::from(&[Shift(State::AMPERSANDS46)]),
         _ => vec![],
     }
 }
-fn action_close_paren_s36(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_close_paren_s37(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::STOP => Vec::from(&[Reduce(PK::EndpointTypeP1, 3usize)]),
         TK::SEMICOLON => Vec::from(&[Reduce(PK::EndpointTypeP1, 3usize)]),
@@ -1091,51 +1118,51 @@ fn action_close_paren_s36(token_kind: TokenKind) -> Vec<Action<State, ProdKind>>
         _ => vec![],
     }
 }
-fn action_open_curly_s37(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_open_curly_s38(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::IDENTIFIER => Vec::from(&[Reduce(PK::OPTIONALOptP2, 0usize)]),
-        TK::OPEN_PAREN => Vec::from(&[Shift(State::OPEN_PARENS48)]),
-        TK::OPTIONAL => Vec::from(&[Shift(State::OPTIONALS49)]),
+        TK::OPEN_PAREN => Vec::from(&[Shift(State::OPEN_PARENS49)]),
+        TK::OPTIONAL => Vec::from(&[Shift(State::OPTIONALS50)]),
         _ => vec![],
     }
 }
-fn action_propertyspecopt_s38(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_propertyspecopt_s39(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::LabelPropertySpecP1, 2usize)]),
         TK::CLOSE_ARROW => Vec::from(&[Reduce(PK::LabelPropertySpecP1, 2usize)]),
         _ => vec![],
     }
 }
-fn action_propertyspec_s39(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_propertyspec_s40(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::PropertySpecOptP1, 1usize)]),
         TK::CLOSE_ARROW => Vec::from(&[Reduce(PK::PropertySpecOptP1, 1usize)]),
         _ => vec![],
     }
 }
-fn action_typename_s40(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_typenameopt_s41(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_ARROW => Vec::from(&[Reduce(PK::LabelSpecOptP2, 0usize)]),
         TK::OPEN_CURLY => Vec::from(&[Reduce(PK::LabelSpecOptP2, 0usize)]),
-        TK::COLON => Vec::from(&[Shift(State::COLONS25)]),
+        TK::COLON => Vec::from(&[Shift(State::COLONS26)]),
         _ => vec![],
     }
 }
-fn action_close_curly_s41(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_close_curly_s42(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::STOP => Vec::from(&[Reduce(PK::GraphTypeP1, 3usize)]),
         TK::SEMICOLON => Vec::from(&[Reduce(PK::GraphTypeP1, 3usize)]),
         _ => vec![],
     }
 }
-fn action_close_paren_s42(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_close_paren_s43(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::STOP => Vec::from(&[Reduce(PK::NodeTypeP1, 4usize)]),
         TK::SEMICOLON => Vec::from(&[Reduce(PK::NodeTypeP1, 4usize)]),
         _ => vec![],
     }
 }
-fn action_identifier_s43(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_identifier_s44(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::SingleLabelTypeName, 2usize)]),
         TK::CLOSE_ARROW => Vec::from(&[Reduce(PK::SingleLabelTypeName, 2usize)]),
@@ -1145,21 +1172,21 @@ fn action_identifier_s43(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> 
         _ => vec![],
     }
 }
-fn action_bar_s44(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_bar_s45(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::IDENTIFIER => Vec::from(&[Shift(State::IDENTIFIERS32)]),
-        TK::AT => Vec::from(&[Shift(State::ATS33)]),
+        TK::IDENTIFIER => Vec::from(&[Shift(State::IDENTIFIERS33)]),
+        TK::AT => Vec::from(&[Shift(State::ATS34)]),
         _ => vec![],
     }
 }
-fn action_ampersand_s45(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_ampersand_s46(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::IDENTIFIER => Vec::from(&[Shift(State::IDENTIFIERS32)]),
-        TK::AT => Vec::from(&[Shift(State::ATS33)]),
+        TK::IDENTIFIER => Vec::from(&[Shift(State::IDENTIFIERS33)]),
+        TK::AT => Vec::from(&[Shift(State::ATS34)]),
         _ => vec![],
     }
 }
-fn action_morelabelsopt_s46(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_morelabelsopt_s47(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::LabelsP1, 2usize)]),
         TK::CLOSE_ARROW => Vec::from(&[Reduce(PK::LabelsP1, 2usize)]),
@@ -1167,7 +1194,7 @@ fn action_morelabelsopt_s46(token_kind: TokenKind) -> Vec<Action<State, ProdKind
         _ => vec![],
     }
 }
-fn action_morelabels_s47(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_morelabels_s48(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::MoreLabelsOptP1, 1usize)]),
         TK::CLOSE_ARROW => Vec::from(&[Reduce(PK::MoreLabelsOptP1, 1usize)]),
@@ -1175,47 +1202,37 @@ fn action_morelabels_s47(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> 
         _ => vec![],
     }
 }
-fn action_open_paren_s48(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_open_paren_s49(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::IDENTIFIER => Vec::from(&[Reduce(PK::OPTIONALOptP2, 0usize)]),
-        TK::OPEN_PAREN => Vec::from(&[Shift(State::OPEN_PARENS48)]),
-        TK::OPTIONAL => Vec::from(&[Shift(State::OPTIONALS49)]),
+        TK::OPEN_PAREN => Vec::from(&[Shift(State::OPEN_PARENS49)]),
+        TK::OPTIONAL => Vec::from(&[Shift(State::OPTIONALS50)]),
         _ => vec![],
     }
 }
-fn action_optional_s49(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_optional_s50(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::IDENTIFIER => Vec::from(&[Reduce(PK::OPTIONALOptP1, 1usize)]),
         _ => vec![],
     }
 }
-fn action_properties_s50(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_properties_s51(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::CLOSE_CURLY => Vec::from(&[Shift(State::CLOSE_CURLYS56)]),
-        TK::COMMA => Vec::from(&[Shift(State::COMMAS57)]),
-        TK::DOUBLE_BAR => Vec::from(&[Shift(State::DOUBLE_BARS58)]),
+        TK::CLOSE_CURLY => Vec::from(&[Shift(State::CLOSE_CURLYS57)]),
+        TK::COMMA => Vec::from(&[Shift(State::COMMAS58)]),
+        TK::DOUBLE_BAR => Vec::from(&[Shift(State::DOUBLE_BARS59)]),
         _ => vec![],
     }
 }
-fn action_optionalopt_s51(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_optionalopt_s52(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::IDENTIFIER => Vec::from(&[Shift(State::IDENTIFIERS59)]),
+        TK::IDENTIFIER => Vec::from(&[Shift(State::IDENTIFIERS60)]),
         _ => vec![],
     }
 }
-fn action_labelpropertyspec_s52(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_labelpropertyspec_s53(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::CLOSE_ARROW => Vec::from(&[Shift(State::CLOSE_ARROWS62)]),
-        _ => vec![],
-    }
-}
-fn action_singlelabel_s53(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
-    match token_kind {
-        TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::MoreLabelsOptP2, 0usize)]),
-        TK::CLOSE_ARROW => Vec::from(&[Reduce(PK::MoreLabelsOptP2, 0usize)]),
-        TK::OPEN_CURLY => Vec::from(&[Reduce(PK::MoreLabelsOptP2, 0usize)]),
-        TK::BAR => Vec::from(&[Shift(State::BARS44)]),
-        TK::AMPERSAND => Vec::from(&[Shift(State::AMPERSANDS45)]),
+        TK::CLOSE_ARROW => Vec::from(&[Shift(State::CLOSE_ARROWS63)]),
         _ => vec![],
     }
 }
@@ -1224,49 +1241,59 @@ fn action_singlelabel_s54(token_kind: TokenKind) -> Vec<Action<State, ProdKind>>
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::MoreLabelsOptP2, 0usize)]),
         TK::CLOSE_ARROW => Vec::from(&[Reduce(PK::MoreLabelsOptP2, 0usize)]),
         TK::OPEN_CURLY => Vec::from(&[Reduce(PK::MoreLabelsOptP2, 0usize)]),
-        TK::BAR => Vec::from(&[Shift(State::BARS44)]),
-        TK::AMPERSAND => Vec::from(&[Shift(State::AMPERSANDS45)]),
+        TK::BAR => Vec::from(&[Shift(State::BARS45)]),
+        TK::AMPERSAND => Vec::from(&[Shift(State::AMPERSANDS46)]),
         _ => vec![],
     }
 }
-fn action_properties_s55(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_singlelabel_s55(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::CLOSE_PAREN => Vec::from(&[Shift(State::CLOSE_PARENS65)]),
-        TK::COMMA => Vec::from(&[Shift(State::COMMAS57)]),
-        TK::DOUBLE_BAR => Vec::from(&[Shift(State::DOUBLE_BARS58)]),
+        TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::MoreLabelsOptP2, 0usize)]),
+        TK::CLOSE_ARROW => Vec::from(&[Reduce(PK::MoreLabelsOptP2, 0usize)]),
+        TK::OPEN_CURLY => Vec::from(&[Reduce(PK::MoreLabelsOptP2, 0usize)]),
+        TK::BAR => Vec::from(&[Shift(State::BARS45)]),
+        TK::AMPERSAND => Vec::from(&[Shift(State::AMPERSANDS46)]),
         _ => vec![],
     }
 }
-fn action_close_curly_s56(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_properties_s56(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::CLOSE_PAREN => Vec::from(&[Shift(State::CLOSE_PARENS66)]),
+        TK::COMMA => Vec::from(&[Shift(State::COMMAS58)]),
+        TK::DOUBLE_BAR => Vec::from(&[Shift(State::DOUBLE_BARS59)]),
+        _ => vec![],
+    }
+}
+fn action_close_curly_s57(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::PropertySpecP1, 3usize)]),
         TK::CLOSE_ARROW => Vec::from(&[Reduce(PK::PropertySpecP1, 3usize)]),
         _ => vec![],
     }
 }
-fn action_comma_s57(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_comma_s58(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::IDENTIFIER => Vec::from(&[Reduce(PK::OPTIONALOptP2, 0usize)]),
-        TK::OPEN_PAREN => Vec::from(&[Shift(State::OPEN_PARENS48)]),
-        TK::OPTIONAL => Vec::from(&[Shift(State::OPTIONALS49)]),
+        TK::OPEN_PAREN => Vec::from(&[Shift(State::OPEN_PARENS49)]),
+        TK::OPTIONAL => Vec::from(&[Shift(State::OPTIONALS50)]),
         _ => vec![],
     }
 }
-fn action_double_bar_s58(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_double_bar_s59(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::IDENTIFIER => Vec::from(&[Reduce(PK::OPTIONALOptP2, 0usize)]),
-        TK::OPEN_PAREN => Vec::from(&[Shift(State::OPEN_PARENS48)]),
-        TK::OPTIONAL => Vec::from(&[Shift(State::OPTIONALS49)]),
+        TK::OPEN_PAREN => Vec::from(&[Shift(State::OPEN_PARENS49)]),
+        TK::OPTIONAL => Vec::from(&[Shift(State::OPTIONALS50)]),
         _ => vec![],
     }
 }
-fn action_identifier_s59(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_identifier_s60(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::COLON => Vec::from(&[Reduce(PK::keyP1, 1usize)]),
         _ => vec![],
     }
 }
-fn action_property_s60(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_property_s61(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::PropertiesBaseProperty, 2usize)]),
         TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::PropertiesBaseProperty, 2usize)]),
@@ -1275,19 +1302,19 @@ fn action_property_s60(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
         _ => vec![],
     }
 }
-fn action_key_s61(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_key_s62(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::COLON => Vec::from(&[Shift(State::COLONS68)]),
+        TK::COLON => Vec::from(&[Shift(State::COLONS69)]),
         _ => vec![],
     }
 }
-fn action_close_arrow_s62(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_close_arrow_s63(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::OPEN_PAREN => Vec::from(&[Shift(State::OPEN_PARENS18)]),
         _ => vec![],
     }
 }
-fn action_morelabelsopt_s63(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_morelabelsopt_s64(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::MoreLabelsOrLabels, 3usize)]),
         TK::CLOSE_ARROW => Vec::from(&[Reduce(PK::MoreLabelsOrLabels, 3usize)]),
@@ -1295,7 +1322,7 @@ fn action_morelabelsopt_s63(token_kind: TokenKind) -> Vec<Action<State, ProdKind
         _ => vec![],
     }
 }
-fn action_morelabelsopt_s64(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_morelabelsopt_s65(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::MoreLabelsAndLabels, 3usize)]),
         TK::CLOSE_ARROW => Vec::from(&[Reduce(PK::MoreLabelsAndLabels, 3usize)]),
@@ -1303,7 +1330,7 @@ fn action_morelabelsopt_s64(token_kind: TokenKind) -> Vec<Action<State, ProdKind
         _ => vec![],
     }
 }
-fn action_close_paren_s65(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_close_paren_s66(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::PropertiesParen, 3usize)]),
         TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::PropertiesParen, 3usize)]),
@@ -1312,16 +1339,16 @@ fn action_close_paren_s65(token_kind: TokenKind) -> Vec<Action<State, ProdKind>>
         _ => vec![],
     }
 }
-fn action_properties_s66(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_properties_s67(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::PropertiesEachOf, 3usize)]),
         TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::PropertiesEachOf, 3usize)]),
         TK::COMMA => Vec::from(&[Reduce(PK::PropertiesEachOf, 3usize)]),
-        TK::DOUBLE_BAR => Vec::from(&[Shift(State::DOUBLE_BARS58)]),
+        TK::DOUBLE_BAR => Vec::from(&[Shift(State::DOUBLE_BARS59)]),
         _ => vec![],
     }
 }
-fn action_properties_s67(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_properties_s68(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::PropertiesOneOf, 3usize)]),
         TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::PropertiesOneOf, 3usize)]),
@@ -1330,87 +1357,87 @@ fn action_properties_s67(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> 
         _ => vec![],
     }
 }
-fn action_colon_s68(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_colon_s69(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::INTEGER_NAME => Vec::from(&[Shift(State::INTEGER_NAMES70)]),
-        TK::STRING_NAME => Vec::from(&[Shift(State::STRING_NAMES71)]),
-        TK::DATE_NAME => Vec::from(&[Shift(State::DATE_NAMES72)]),
-        TK::CHECK => Vec::from(&[Shift(State::CHECKS73)]),
-        TK::ANY => Vec::from(&[Shift(State::ANYS74)]),
+        TK::INTEGER_NAME => Vec::from(&[Shift(State::INTEGER_NAMES71)]),
+        TK::STRING_NAME => Vec::from(&[Shift(State::STRING_NAMES72)]),
+        TK::DATE_NAME => Vec::from(&[Shift(State::DATE_NAMES73)]),
+        TK::CHECK => Vec::from(&[Shift(State::CHECKS74)]),
+        TK::ANY => Vec::from(&[Shift(State::ANYS75)]),
         _ => vec![],
     }
 }
-fn action_endpointtype_s69(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_endpointtype_s70(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::STOP => Vec::from(&[Reduce(PK::EdgeTypeP1, 6usize)]),
         TK::SEMICOLON => Vec::from(&[Reduce(PK::EdgeTypeP1, 6usize)]),
         _ => vec![],
     }
 }
-fn action_integer_name_s70(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_integer_name_s71(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::CardOptP2, 0usize)]),
-        TK::OPEN_CURLY => Vec::from(&[Shift(State::OPEN_CURLYS77)]),
+        TK::OPEN_CURLY => Vec::from(&[Shift(State::OPEN_CURLYS78)]),
         TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::CardOptP2, 0usize)]),
         TK::COMMA => Vec::from(&[Reduce(PK::CardOptP2, 0usize)]),
         TK::BAR => Vec::from(&[Reduce(PK::CardOptP2, 0usize)]),
         TK::DOUBLE_BAR => Vec::from(&[Reduce(PK::CardOptP2, 0usize)]),
-        TK::PLUS => Vec::from(&[Shift(State::PLUSS78)]),
-        TK::STAR => Vec::from(&[Shift(State::STARS79)]),
-        TK::QUESTION => Vec::from(&[Shift(State::QUESTIONS80)]),
+        TK::PLUS => Vec::from(&[Shift(State::PLUSS79)]),
+        TK::STAR => Vec::from(&[Shift(State::STARS80)]),
+        TK::QUESTION => Vec::from(&[Shift(State::QUESTIONS81)]),
         TK::AMPERSAND => Vec::from(&[Reduce(PK::CardOptP2, 0usize)]),
         TK::CHECK => Vec::from(&[Reduce(PK::CardOptP2, 0usize)]),
         _ => vec![],
     }
 }
-fn action_string_name_s71(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_string_name_s72(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::CardOptP2, 0usize)]),
-        TK::OPEN_CURLY => Vec::from(&[Shift(State::OPEN_CURLYS77)]),
+        TK::OPEN_CURLY => Vec::from(&[Shift(State::OPEN_CURLYS78)]),
         TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::CardOptP2, 0usize)]),
         TK::COMMA => Vec::from(&[Reduce(PK::CardOptP2, 0usize)]),
         TK::BAR => Vec::from(&[Reduce(PK::CardOptP2, 0usize)]),
         TK::DOUBLE_BAR => Vec::from(&[Reduce(PK::CardOptP2, 0usize)]),
-        TK::PLUS => Vec::from(&[Shift(State::PLUSS78)]),
-        TK::STAR => Vec::from(&[Shift(State::STARS79)]),
-        TK::QUESTION => Vec::from(&[Shift(State::QUESTIONS80)]),
+        TK::PLUS => Vec::from(&[Shift(State::PLUSS79)]),
+        TK::STAR => Vec::from(&[Shift(State::STARS80)]),
+        TK::QUESTION => Vec::from(&[Shift(State::QUESTIONS81)]),
         TK::AMPERSAND => Vec::from(&[Reduce(PK::CardOptP2, 0usize)]),
         TK::CHECK => Vec::from(&[Reduce(PK::CardOptP2, 0usize)]),
         _ => vec![],
     }
 }
-fn action_date_name_s72(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_date_name_s73(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::CardOptP2, 0usize)]),
-        TK::OPEN_CURLY => Vec::from(&[Shift(State::OPEN_CURLYS77)]),
+        TK::OPEN_CURLY => Vec::from(&[Shift(State::OPEN_CURLYS78)]),
         TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::CardOptP2, 0usize)]),
         TK::COMMA => Vec::from(&[Reduce(PK::CardOptP2, 0usize)]),
         TK::BAR => Vec::from(&[Reduce(PK::CardOptP2, 0usize)]),
         TK::DOUBLE_BAR => Vec::from(&[Reduce(PK::CardOptP2, 0usize)]),
-        TK::PLUS => Vec::from(&[Shift(State::PLUSS78)]),
-        TK::STAR => Vec::from(&[Shift(State::STARS79)]),
-        TK::QUESTION => Vec::from(&[Shift(State::QUESTIONS80)]),
+        TK::PLUS => Vec::from(&[Shift(State::PLUSS79)]),
+        TK::STAR => Vec::from(&[Shift(State::STARS80)]),
+        TK::QUESTION => Vec::from(&[Shift(State::QUESTIONS81)]),
         TK::AMPERSAND => Vec::from(&[Reduce(PK::CardOptP2, 0usize)]),
         TK::CHECK => Vec::from(&[Reduce(PK::CardOptP2, 0usize)]),
         _ => vec![],
     }
 }
-fn action_check_s73(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_check_s74(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::OPEN_PAREN => Vec::from(&[Shift(State::OPEN_PARENS85)]),
-        TK::TRUE => Vec::from(&[Shift(State::TRUES86)]),
-        TK::FALSE => Vec::from(&[Shift(State::FALSES87)]),
-        TK::GT => Vec::from(&[Shift(State::GTS88)]),
-        TK::LT => Vec::from(&[Shift(State::LTS89)]),
-        TK::GE => Vec::from(&[Shift(State::GES90)]),
-        TK::LE => Vec::from(&[Shift(State::LES91)]),
-        TK::EQUALS => Vec::from(&[Shift(State::EQUALSS92)]),
-        TK::REGEX => Vec::from(&[Shift(State::REGEXS93)]),
-        TK::NOT => Vec::from(&[Shift(State::NOTS94)]),
+        TK::OPEN_PAREN => Vec::from(&[Shift(State::OPEN_PARENS86)]),
+        TK::TRUE => Vec::from(&[Shift(State::TRUES87)]),
+        TK::FALSE => Vec::from(&[Shift(State::FALSES88)]),
+        TK::GT => Vec::from(&[Shift(State::GTS89)]),
+        TK::LT => Vec::from(&[Shift(State::LTS90)]),
+        TK::GE => Vec::from(&[Shift(State::GES91)]),
+        TK::LE => Vec::from(&[Shift(State::LES92)]),
+        TK::EQUALS => Vec::from(&[Shift(State::EQUALSS93)]),
+        TK::REGEX => Vec::from(&[Shift(State::REGEXS94)]),
+        TK::NOT => Vec::from(&[Shift(State::NOTS95)]),
         _ => vec![],
     }
 }
-fn action_any_s74(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_any_s75(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::CheckOptP2, 0usize)]),
         TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::CheckOptP2, 0usize)]),
@@ -1418,11 +1445,11 @@ fn action_any_s74(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
         TK::BAR => Vec::from(&[Reduce(PK::CheckOptP2, 0usize)]),
         TK::DOUBLE_BAR => Vec::from(&[Reduce(PK::CheckOptP2, 0usize)]),
         TK::AMPERSAND => Vec::from(&[Reduce(PK::CheckOptP2, 0usize)]),
-        TK::CHECK => Vec::from(&[Shift(State::CHECKS96)]),
+        TK::CHECK => Vec::from(&[Shift(State::CHECKS97)]),
         _ => vec![],
     }
 }
-fn action_typespec_s75(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_typespec_s76(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::PropertyP1, 3usize)]),
         TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::PropertyP1, 3usize)]),
@@ -1431,24 +1458,24 @@ fn action_typespec_s75(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
         _ => vec![],
     }
 }
-fn action_simpletype_s76(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_simpletype_s77(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::MoreTypesOptP2, 0usize)]),
         TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::MoreTypesOptP2, 0usize)]),
         TK::COMMA => Vec::from(&[Reduce(PK::MoreTypesOptP2, 0usize)]),
-        TK::BAR => Vec::from(&[Shift(State::BARS99)]),
+        TK::BAR => Vec::from(&[Shift(State::BARS100)]),
         TK::DOUBLE_BAR => Vec::from(&[Reduce(PK::MoreTypesOptP2, 0usize)]),
-        TK::AMPERSAND => Vec::from(&[Shift(State::AMPERSANDS100)]),
+        TK::AMPERSAND => Vec::from(&[Shift(State::AMPERSANDS101)]),
         _ => vec![],
     }
 }
-fn action_open_curly_s77(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_open_curly_s78(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::NUMBER => Vec::from(&[Shift(State::NUMBERS103)]),
+        TK::NUMBER => Vec::from(&[Shift(State::NUMBERS104)]),
         _ => vec![],
     }
 }
-fn action_plus_s78(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_plus_s79(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::CardOneOrMore, 1usize)]),
         TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::CardOneOrMore, 1usize)]),
@@ -1460,7 +1487,7 @@ fn action_plus_s78(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
         _ => vec![],
     }
 }
-fn action_star_s79(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_star_s80(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::CardZeroOrMore, 1usize)]),
         TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::CardZeroOrMore, 1usize)]),
@@ -1472,7 +1499,7 @@ fn action_star_s79(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
         _ => vec![],
     }
 }
-fn action_question_s80(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_question_s81(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::CardOptional, 1usize)]),
         TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::CardOptional, 1usize)]),
@@ -1484,7 +1511,7 @@ fn action_question_s80(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
         _ => vec![],
     }
 }
-fn action_cardopt_s81(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_cardopt_s82(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::CheckOptP2, 0usize)]),
         TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::CheckOptP2, 0usize)]),
@@ -1492,11 +1519,11 @@ fn action_cardopt_s81(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
         TK::BAR => Vec::from(&[Reduce(PK::CheckOptP2, 0usize)]),
         TK::DOUBLE_BAR => Vec::from(&[Reduce(PK::CheckOptP2, 0usize)]),
         TK::AMPERSAND => Vec::from(&[Reduce(PK::CheckOptP2, 0usize)]),
-        TK::CHECK => Vec::from(&[Shift(State::CHECKS96)]),
+        TK::CHECK => Vec::from(&[Shift(State::CHECKS97)]),
         _ => vec![],
     }
 }
-fn action_card_s82(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_card_s83(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::CardOptP1, 1usize)]),
         TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::CardOptP1, 1usize)]),
@@ -1508,18 +1535,6 @@ fn action_card_s82(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
         _ => vec![],
     }
 }
-fn action_cardopt_s83(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
-    match token_kind {
-        TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::CheckOptP2, 0usize)]),
-        TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::CheckOptP2, 0usize)]),
-        TK::COMMA => Vec::from(&[Reduce(PK::CheckOptP2, 0usize)]),
-        TK::BAR => Vec::from(&[Reduce(PK::CheckOptP2, 0usize)]),
-        TK::DOUBLE_BAR => Vec::from(&[Reduce(PK::CheckOptP2, 0usize)]),
-        TK::AMPERSAND => Vec::from(&[Reduce(PK::CheckOptP2, 0usize)]),
-        TK::CHECK => Vec::from(&[Shift(State::CHECKS96)]),
-        _ => vec![],
-    }
-}
 fn action_cardopt_s84(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::CheckOptP2, 0usize)]),
@@ -1528,26 +1543,38 @@ fn action_cardopt_s84(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
         TK::BAR => Vec::from(&[Reduce(PK::CheckOptP2, 0usize)]),
         TK::DOUBLE_BAR => Vec::from(&[Reduce(PK::CheckOptP2, 0usize)]),
         TK::AMPERSAND => Vec::from(&[Reduce(PK::CheckOptP2, 0usize)]),
-        TK::CHECK => Vec::from(&[Shift(State::CHECKS96)]),
+        TK::CHECK => Vec::from(&[Shift(State::CHECKS97)]),
         _ => vec![],
     }
 }
-fn action_open_paren_s85(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_cardopt_s85(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::OPEN_PAREN => Vec::from(&[Shift(State::OPEN_PARENS85)]),
-        TK::TRUE => Vec::from(&[Shift(State::TRUES86)]),
-        TK::FALSE => Vec::from(&[Shift(State::FALSES87)]),
-        TK::GT => Vec::from(&[Shift(State::GTS88)]),
-        TK::LT => Vec::from(&[Shift(State::LTS89)]),
-        TK::GE => Vec::from(&[Shift(State::GES90)]),
-        TK::LE => Vec::from(&[Shift(State::LES91)]),
-        TK::EQUALS => Vec::from(&[Shift(State::EQUALSS92)]),
-        TK::REGEX => Vec::from(&[Shift(State::REGEXS93)]),
-        TK::NOT => Vec::from(&[Shift(State::NOTS94)]),
+        TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::CheckOptP2, 0usize)]),
+        TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::CheckOptP2, 0usize)]),
+        TK::COMMA => Vec::from(&[Reduce(PK::CheckOptP2, 0usize)]),
+        TK::BAR => Vec::from(&[Reduce(PK::CheckOptP2, 0usize)]),
+        TK::DOUBLE_BAR => Vec::from(&[Reduce(PK::CheckOptP2, 0usize)]),
+        TK::AMPERSAND => Vec::from(&[Reduce(PK::CheckOptP2, 0usize)]),
+        TK::CHECK => Vec::from(&[Shift(State::CHECKS97)]),
         _ => vec![],
     }
 }
-fn action_true_s86(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_open_paren_s86(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::OPEN_PAREN => Vec::from(&[Shift(State::OPEN_PARENS86)]),
+        TK::TRUE => Vec::from(&[Shift(State::TRUES87)]),
+        TK::FALSE => Vec::from(&[Shift(State::FALSES88)]),
+        TK::GT => Vec::from(&[Shift(State::GTS89)]),
+        TK::LT => Vec::from(&[Shift(State::LTS90)]),
+        TK::GE => Vec::from(&[Shift(State::GES91)]),
+        TK::LE => Vec::from(&[Shift(State::LES92)]),
+        TK::EQUALS => Vec::from(&[Shift(State::EQUALSS93)]),
+        TK::REGEX => Vec::from(&[Shift(State::REGEXS94)]),
+        TK::NOT => Vec::from(&[Shift(State::NOTS95)]),
+        _ => vec![],
+    }
+}
+fn action_true_s87(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::CondP1, 1usize)]),
         TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::CondP1, 1usize)]),
@@ -1560,7 +1587,7 @@ fn action_true_s86(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
         _ => vec![],
     }
 }
-fn action_false_s87(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_false_s88(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::CondP2, 1usize)]),
         TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::CondP2, 1usize)]),
@@ -1573,63 +1600,63 @@ fn action_false_s87(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
         _ => vec![],
     }
 }
-fn action_gt_s88(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_gt_s89(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::NUMBER => Vec::from(&[Shift(State::NUMBERS108)]),
-        TK::QUOTED_STRING => Vec::from(&[Shift(State::QUOTED_STRINGS109)]),
+        TK::NUMBER => Vec::from(&[Shift(State::NUMBERS109)]),
+        TK::QUOTED_STRING => Vec::from(&[Shift(State::QUOTED_STRINGS110)]),
         _ => vec![],
     }
 }
-fn action_lt_s89(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_lt_s90(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::NUMBER => Vec::from(&[Shift(State::NUMBERS108)]),
-        TK::QUOTED_STRING => Vec::from(&[Shift(State::QUOTED_STRINGS109)]),
+        TK::NUMBER => Vec::from(&[Shift(State::NUMBERS109)]),
+        TK::QUOTED_STRING => Vec::from(&[Shift(State::QUOTED_STRINGS110)]),
         _ => vec![],
     }
 }
-fn action_ge_s90(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_ge_s91(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::NUMBER => Vec::from(&[Shift(State::NUMBERS108)]),
-        TK::QUOTED_STRING => Vec::from(&[Shift(State::QUOTED_STRINGS109)]),
+        TK::NUMBER => Vec::from(&[Shift(State::NUMBERS109)]),
+        TK::QUOTED_STRING => Vec::from(&[Shift(State::QUOTED_STRINGS110)]),
         _ => vec![],
     }
 }
-fn action_le_s91(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_le_s92(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::NUMBER => Vec::from(&[Shift(State::NUMBERS108)]),
-        TK::QUOTED_STRING => Vec::from(&[Shift(State::QUOTED_STRINGS109)]),
+        TK::NUMBER => Vec::from(&[Shift(State::NUMBERS109)]),
+        TK::QUOTED_STRING => Vec::from(&[Shift(State::QUOTED_STRINGS110)]),
         _ => vec![],
     }
 }
-fn action_equals_s92(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_equals_s93(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::NUMBER => Vec::from(&[Shift(State::NUMBERS108)]),
-        TK::QUOTED_STRING => Vec::from(&[Shift(State::QUOTED_STRINGS109)]),
+        TK::NUMBER => Vec::from(&[Shift(State::NUMBERS109)]),
+        TK::QUOTED_STRING => Vec::from(&[Shift(State::QUOTED_STRINGS110)]),
         _ => vec![],
     }
 }
-fn action_regex_s93(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_regex_s94(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::QUOTED_STRING => Vec::from(&[Shift(State::QUOTED_STRINGS115)]),
+        TK::QUOTED_STRING => Vec::from(&[Shift(State::QUOTED_STRINGS116)]),
         _ => vec![],
     }
 }
-fn action_not_s94(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_not_s95(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::OPEN_PAREN => Vec::from(&[Shift(State::OPEN_PARENS85)]),
-        TK::TRUE => Vec::from(&[Shift(State::TRUES86)]),
-        TK::FALSE => Vec::from(&[Shift(State::FALSES87)]),
-        TK::GT => Vec::from(&[Shift(State::GTS88)]),
-        TK::LT => Vec::from(&[Shift(State::LTS89)]),
-        TK::GE => Vec::from(&[Shift(State::GES90)]),
-        TK::LE => Vec::from(&[Shift(State::LES91)]),
-        TK::EQUALS => Vec::from(&[Shift(State::EQUALSS92)]),
-        TK::REGEX => Vec::from(&[Shift(State::REGEXS93)]),
-        TK::NOT => Vec::from(&[Shift(State::NOTS94)]),
+        TK::OPEN_PAREN => Vec::from(&[Shift(State::OPEN_PARENS86)]),
+        TK::TRUE => Vec::from(&[Shift(State::TRUES87)]),
+        TK::FALSE => Vec::from(&[Shift(State::FALSES88)]),
+        TK::GT => Vec::from(&[Shift(State::GTS89)]),
+        TK::LT => Vec::from(&[Shift(State::LTS90)]),
+        TK::GE => Vec::from(&[Shift(State::GES91)]),
+        TK::LE => Vec::from(&[Shift(State::LES92)]),
+        TK::EQUALS => Vec::from(&[Shift(State::EQUALSS93)]),
+        TK::REGEX => Vec::from(&[Shift(State::REGEXS94)]),
+        TK::NOT => Vec::from(&[Shift(State::NOTS95)]),
         _ => vec![],
     }
 }
-fn action_cond_s95(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_cond_s96(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::SimpleTypeCond, 2usize)]),
         TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::SimpleTypeCond, 2usize)]),
@@ -1637,27 +1664,27 @@ fn action_cond_s95(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
         TK::BAR => Vec::from(&[Reduce(PK::SimpleTypeCond, 2usize)]),
         TK::DOUBLE_BAR => Vec::from(&[Reduce(PK::SimpleTypeCond, 2usize)]),
         TK::AMPERSAND => Vec::from(&[Reduce(PK::SimpleTypeCond, 2usize)]),
-        TK::AND => Vec::from(&[Shift(State::ANDS117)]),
-        TK::OR => Vec::from(&[Shift(State::ORS118)]),
+        TK::AND => Vec::from(&[Shift(State::ANDS118)]),
+        TK::OR => Vec::from(&[Shift(State::ORS119)]),
         _ => vec![],
     }
 }
-fn action_check_s96(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_check_s97(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::OPEN_PAREN => Vec::from(&[Shift(State::OPEN_PARENS85)]),
-        TK::TRUE => Vec::from(&[Shift(State::TRUES86)]),
-        TK::FALSE => Vec::from(&[Shift(State::FALSES87)]),
-        TK::GT => Vec::from(&[Shift(State::GTS88)]),
-        TK::LT => Vec::from(&[Shift(State::LTS89)]),
-        TK::GE => Vec::from(&[Shift(State::GES90)]),
-        TK::LE => Vec::from(&[Shift(State::LES91)]),
-        TK::EQUALS => Vec::from(&[Shift(State::EQUALSS92)]),
-        TK::REGEX => Vec::from(&[Shift(State::REGEXS93)]),
-        TK::NOT => Vec::from(&[Shift(State::NOTS94)]),
+        TK::OPEN_PAREN => Vec::from(&[Shift(State::OPEN_PARENS86)]),
+        TK::TRUE => Vec::from(&[Shift(State::TRUES87)]),
+        TK::FALSE => Vec::from(&[Shift(State::FALSES88)]),
+        TK::GT => Vec::from(&[Shift(State::GTS89)]),
+        TK::LT => Vec::from(&[Shift(State::LTS90)]),
+        TK::GE => Vec::from(&[Shift(State::GES91)]),
+        TK::LE => Vec::from(&[Shift(State::LES92)]),
+        TK::EQUALS => Vec::from(&[Shift(State::EQUALSS93)]),
+        TK::REGEX => Vec::from(&[Shift(State::REGEXS94)]),
+        TK::NOT => Vec::from(&[Shift(State::NOTS95)]),
         _ => vec![],
     }
 }
-fn action_checkopt_s97(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_checkopt_s98(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::SimpleTypeAny, 2usize)]),
         TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::SimpleTypeAny, 2usize)]),
@@ -1668,7 +1695,7 @@ fn action_checkopt_s97(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
         _ => vec![],
     }
 }
-fn action_check_s98(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_check_s99(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::CheckOptP1, 1usize)]),
         TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::CheckOptP1, 1usize)]),
@@ -1679,27 +1706,27 @@ fn action_check_s98(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
         _ => vec![],
     }
 }
-fn action_bar_s99(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_bar_s100(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::INTEGER_NAME => Vec::from(&[Shift(State::INTEGER_NAMES70)]),
-        TK::STRING_NAME => Vec::from(&[Shift(State::STRING_NAMES71)]),
-        TK::DATE_NAME => Vec::from(&[Shift(State::DATE_NAMES72)]),
-        TK::CHECK => Vec::from(&[Shift(State::CHECKS73)]),
-        TK::ANY => Vec::from(&[Shift(State::ANYS74)]),
+        TK::INTEGER_NAME => Vec::from(&[Shift(State::INTEGER_NAMES71)]),
+        TK::STRING_NAME => Vec::from(&[Shift(State::STRING_NAMES72)]),
+        TK::DATE_NAME => Vec::from(&[Shift(State::DATE_NAMES73)]),
+        TK::CHECK => Vec::from(&[Shift(State::CHECKS74)]),
+        TK::ANY => Vec::from(&[Shift(State::ANYS75)]),
         _ => vec![],
     }
 }
-fn action_ampersand_s100(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_ampersand_s101(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::INTEGER_NAME => Vec::from(&[Shift(State::INTEGER_NAMES70)]),
-        TK::STRING_NAME => Vec::from(&[Shift(State::STRING_NAMES71)]),
-        TK::DATE_NAME => Vec::from(&[Shift(State::DATE_NAMES72)]),
-        TK::CHECK => Vec::from(&[Shift(State::CHECKS73)]),
-        TK::ANY => Vec::from(&[Shift(State::ANYS74)]),
+        TK::INTEGER_NAME => Vec::from(&[Shift(State::INTEGER_NAMES71)]),
+        TK::STRING_NAME => Vec::from(&[Shift(State::STRING_NAMES72)]),
+        TK::DATE_NAME => Vec::from(&[Shift(State::DATE_NAMES73)]),
+        TK::CHECK => Vec::from(&[Shift(State::CHECKS74)]),
+        TK::ANY => Vec::from(&[Shift(State::ANYS75)]),
         _ => vec![],
     }
 }
-fn action_moretypesopt_s101(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_moretypesopt_s102(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::TypeSpecP1, 2usize)]),
         TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::TypeSpecP1, 2usize)]),
@@ -1708,7 +1735,7 @@ fn action_moretypesopt_s101(token_kind: TokenKind) -> Vec<Action<State, ProdKind
         _ => vec![],
     }
 }
-fn action_moretypes_s102(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_moretypes_s103(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::MoreTypesOptP1, 1usize)]),
         TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::MoreTypesOptP1, 1usize)]),
@@ -1717,13 +1744,13 @@ fn action_moretypes_s102(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> 
         _ => vec![],
     }
 }
-fn action_number_s103(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_number_s104(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::COMMA => Vec::from(&[Shift(State::COMMAS122)]),
+        TK::COMMA => Vec::from(&[Shift(State::COMMAS123)]),
         _ => vec![],
     }
 }
-fn action_checkopt_s104(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_checkopt_s105(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::SimpleTypeInteger, 3usize)]),
         TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::SimpleTypeInteger, 3usize)]),
@@ -1734,7 +1761,7 @@ fn action_checkopt_s104(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
         _ => vec![],
     }
 }
-fn action_checkopt_s105(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_checkopt_s106(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::SimpleTypeStringSpec, 3usize)]),
         TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::SimpleTypeStringSpec, 3usize)]),
@@ -1745,7 +1772,7 @@ fn action_checkopt_s105(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
         _ => vec![],
     }
 }
-fn action_checkopt_s106(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_checkopt_s107(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::SimpleTypeDate, 3usize)]),
         TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::SimpleTypeDate, 3usize)]),
@@ -1756,15 +1783,15 @@ fn action_checkopt_s106(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
         _ => vec![],
     }
 }
-fn action_cond_s107(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_cond_s108(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::CLOSE_PAREN => Vec::from(&[Shift(State::CLOSE_PARENS123)]),
-        TK::AND => Vec::from(&[Shift(State::ANDS117)]),
-        TK::OR => Vec::from(&[Shift(State::ORS118)]),
+        TK::CLOSE_PAREN => Vec::from(&[Shift(State::CLOSE_PARENS124)]),
+        TK::AND => Vec::from(&[Shift(State::ANDS118)]),
+        TK::OR => Vec::from(&[Shift(State::ORS119)]),
         _ => vec![],
     }
 }
-fn action_number_s108(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_number_s109(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::SingleValueNumberValue, 1usize)]),
         TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::SingleValueNumberValue, 1usize)]),
@@ -1777,7 +1804,7 @@ fn action_number_s108(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
         _ => vec![],
     }
 }
-fn action_quoted_string_s109(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_quoted_string_s110(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::SingleValueStringValue, 1usize)]),
         TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::SingleValueStringValue, 1usize)]),
@@ -1790,7 +1817,7 @@ fn action_quoted_string_s109(token_kind: TokenKind) -> Vec<Action<State, ProdKin
         _ => vec![],
     }
 }
-fn action_singlevalue_s110(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_singlevalue_s111(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::CondGT, 2usize)]),
         TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::CondGT, 2usize)]),
@@ -1803,7 +1830,7 @@ fn action_singlevalue_s110(token_kind: TokenKind) -> Vec<Action<State, ProdKind>
         _ => vec![],
     }
 }
-fn action_singlevalue_s111(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_singlevalue_s112(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::CondLT, 2usize)]),
         TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::CondLT, 2usize)]),
@@ -1816,7 +1843,7 @@ fn action_singlevalue_s111(token_kind: TokenKind) -> Vec<Action<State, ProdKind>
         _ => vec![],
     }
 }
-fn action_singlevalue_s112(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_singlevalue_s113(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::CondGE, 2usize)]),
         TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::CondGE, 2usize)]),
@@ -1829,7 +1856,7 @@ fn action_singlevalue_s112(token_kind: TokenKind) -> Vec<Action<State, ProdKind>
         _ => vec![],
     }
 }
-fn action_singlevalue_s113(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_singlevalue_s114(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::CondLE, 2usize)]),
         TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::CondLE, 2usize)]),
@@ -1842,7 +1869,7 @@ fn action_singlevalue_s113(token_kind: TokenKind) -> Vec<Action<State, ProdKind>
         _ => vec![],
     }
 }
-fn action_singlevalue_s114(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_singlevalue_s115(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::CondEQ, 2usize)]),
         TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::CondEQ, 2usize)]),
@@ -1855,7 +1882,7 @@ fn action_singlevalue_s114(token_kind: TokenKind) -> Vec<Action<State, ProdKind>
         _ => vec![],
     }
 }
-fn action_quoted_string_s115(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_quoted_string_s116(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::CondRegex, 2usize)]),
         TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::CondRegex, 2usize)]),
@@ -1868,7 +1895,7 @@ fn action_quoted_string_s115(token_kind: TokenKind) -> Vec<Action<State, ProdKin
         _ => vec![],
     }
 }
-fn action_cond_s116(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_cond_s117(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::CondNot, 2usize)]),
         TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::CondNot, 2usize)]),
@@ -1881,37 +1908,37 @@ fn action_cond_s116(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
         _ => vec![],
     }
 }
-fn action_and_s117(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_and_s118(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::OPEN_PAREN => Vec::from(&[Shift(State::OPEN_PARENS85)]),
-        TK::TRUE => Vec::from(&[Shift(State::TRUES86)]),
-        TK::FALSE => Vec::from(&[Shift(State::FALSES87)]),
-        TK::GT => Vec::from(&[Shift(State::GTS88)]),
-        TK::LT => Vec::from(&[Shift(State::LTS89)]),
-        TK::GE => Vec::from(&[Shift(State::GES90)]),
-        TK::LE => Vec::from(&[Shift(State::LES91)]),
-        TK::EQUALS => Vec::from(&[Shift(State::EQUALSS92)]),
-        TK::REGEX => Vec::from(&[Shift(State::REGEXS93)]),
-        TK::NOT => Vec::from(&[Shift(State::NOTS94)]),
+        TK::OPEN_PAREN => Vec::from(&[Shift(State::OPEN_PARENS86)]),
+        TK::TRUE => Vec::from(&[Shift(State::TRUES87)]),
+        TK::FALSE => Vec::from(&[Shift(State::FALSES88)]),
+        TK::GT => Vec::from(&[Shift(State::GTS89)]),
+        TK::LT => Vec::from(&[Shift(State::LTS90)]),
+        TK::GE => Vec::from(&[Shift(State::GES91)]),
+        TK::LE => Vec::from(&[Shift(State::LES92)]),
+        TK::EQUALS => Vec::from(&[Shift(State::EQUALSS93)]),
+        TK::REGEX => Vec::from(&[Shift(State::REGEXS94)]),
+        TK::NOT => Vec::from(&[Shift(State::NOTS95)]),
         _ => vec![],
     }
 }
-fn action_or_s118(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_or_s119(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::OPEN_PAREN => Vec::from(&[Shift(State::OPEN_PARENS85)]),
-        TK::TRUE => Vec::from(&[Shift(State::TRUES86)]),
-        TK::FALSE => Vec::from(&[Shift(State::FALSES87)]),
-        TK::GT => Vec::from(&[Shift(State::GTS88)]),
-        TK::LT => Vec::from(&[Shift(State::LTS89)]),
-        TK::GE => Vec::from(&[Shift(State::GES90)]),
-        TK::LE => Vec::from(&[Shift(State::LES91)]),
-        TK::EQUALS => Vec::from(&[Shift(State::EQUALSS92)]),
-        TK::REGEX => Vec::from(&[Shift(State::REGEXS93)]),
-        TK::NOT => Vec::from(&[Shift(State::NOTS94)]),
+        TK::OPEN_PAREN => Vec::from(&[Shift(State::OPEN_PARENS86)]),
+        TK::TRUE => Vec::from(&[Shift(State::TRUES87)]),
+        TK::FALSE => Vec::from(&[Shift(State::FALSES88)]),
+        TK::GT => Vec::from(&[Shift(State::GTS89)]),
+        TK::LT => Vec::from(&[Shift(State::LTS90)]),
+        TK::GE => Vec::from(&[Shift(State::GES91)]),
+        TK::LE => Vec::from(&[Shift(State::LES92)]),
+        TK::EQUALS => Vec::from(&[Shift(State::EQUALSS93)]),
+        TK::REGEX => Vec::from(&[Shift(State::REGEXS94)]),
+        TK::NOT => Vec::from(&[Shift(State::NOTS95)]),
         _ => vec![],
     }
 }
-fn action_cond_s119(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_cond_s120(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::CheckP1, 2usize)]),
         TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::CheckP1, 2usize)]),
@@ -1919,19 +1946,8 @@ fn action_cond_s119(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
         TK::BAR => Vec::from(&[Reduce(PK::CheckP1, 2usize)]),
         TK::DOUBLE_BAR => Vec::from(&[Reduce(PK::CheckP1, 2usize)]),
         TK::AMPERSAND => Vec::from(&[Reduce(PK::CheckP1, 2usize)]),
-        TK::AND => Vec::from(&[Shift(State::ANDS117)]),
-        TK::OR => Vec::from(&[Shift(State::ORS118)]),
-        _ => vec![],
-    }
-}
-fn action_simpletype_s120(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
-    match token_kind {
-        TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::MoreTypesOptP2, 0usize)]),
-        TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::MoreTypesOptP2, 0usize)]),
-        TK::COMMA => Vec::from(&[Reduce(PK::MoreTypesOptP2, 0usize)]),
-        TK::BAR => Vec::from(&[Shift(State::BARS99)]),
-        TK::DOUBLE_BAR => Vec::from(&[Reduce(PK::MoreTypesOptP2, 0usize)]),
-        TK::AMPERSAND => Vec::from(&[Shift(State::AMPERSANDS100)]),
+        TK::AND => Vec::from(&[Shift(State::ANDS118)]),
+        TK::OR => Vec::from(&[Shift(State::ORS119)]),
         _ => vec![],
     }
 }
@@ -1940,20 +1956,31 @@ fn action_simpletype_s121(token_kind: TokenKind) -> Vec<Action<State, ProdKind>>
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::MoreTypesOptP2, 0usize)]),
         TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::MoreTypesOptP2, 0usize)]),
         TK::COMMA => Vec::from(&[Reduce(PK::MoreTypesOptP2, 0usize)]),
-        TK::BAR => Vec::from(&[Shift(State::BARS99)]),
+        TK::BAR => Vec::from(&[Shift(State::BARS100)]),
         TK::DOUBLE_BAR => Vec::from(&[Reduce(PK::MoreTypesOptP2, 0usize)]),
-        TK::AMPERSAND => Vec::from(&[Shift(State::AMPERSANDS100)]),
+        TK::AMPERSAND => Vec::from(&[Shift(State::AMPERSANDS101)]),
         _ => vec![],
     }
 }
-fn action_comma_s122(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_simpletype_s122(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::STAR => Vec::from(&[Shift(State::STARS128)]),
-        TK::NUMBER => Vec::from(&[Shift(State::NUMBERS129)]),
+        TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::MoreTypesOptP2, 0usize)]),
+        TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::MoreTypesOptP2, 0usize)]),
+        TK::COMMA => Vec::from(&[Reduce(PK::MoreTypesOptP2, 0usize)]),
+        TK::BAR => Vec::from(&[Shift(State::BARS100)]),
+        TK::DOUBLE_BAR => Vec::from(&[Reduce(PK::MoreTypesOptP2, 0usize)]),
+        TK::AMPERSAND => Vec::from(&[Shift(State::AMPERSANDS101)]),
         _ => vec![],
     }
 }
-fn action_close_paren_s123(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_comma_s123(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::STAR => Vec::from(&[Shift(State::STARS129)]),
+        TK::NUMBER => Vec::from(&[Shift(State::NUMBERS130)]),
+        _ => vec![],
+    }
+}
+fn action_close_paren_s124(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::CondParenCond, 3usize)]),
         TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::CondParenCond, 3usize)]),
@@ -1966,7 +1993,7 @@ fn action_close_paren_s123(token_kind: TokenKind) -> Vec<Action<State, ProdKind>
         _ => vec![],
     }
 }
-fn action_cond_s124(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_cond_s125(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::CondAnd, 3usize)]),
         TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::CondAnd, 3usize)]),
@@ -1979,7 +2006,7 @@ fn action_cond_s124(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
         _ => vec![],
     }
 }
-fn action_cond_s125(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_cond_s126(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::CondOR, 3usize)]),
         TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::CondOR, 3usize)]),
@@ -1992,7 +2019,7 @@ fn action_cond_s125(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
         _ => vec![],
     }
 }
-fn action_moretypesopt_s126(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_moretypesopt_s127(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::MoreTypesUnionType, 3usize)]),
         TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::MoreTypesUnionType, 3usize)]),
@@ -2001,7 +2028,7 @@ fn action_moretypesopt_s126(token_kind: TokenKind) -> Vec<Action<State, ProdKind
         _ => vec![],
     }
 }
-fn action_moretypesopt_s127(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_moretypesopt_s128(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::MoreTypesIntersectionType, 3usize)]),
         TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::MoreTypesIntersectionType, 3usize)]),
@@ -2010,25 +2037,25 @@ fn action_moretypesopt_s127(token_kind: TokenKind) -> Vec<Action<State, ProdKind
         _ => vec![],
     }
 }
-fn action_star_s128(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_star_s129(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::MaxStar, 1usize)]),
         _ => vec![],
     }
 }
-fn action_number_s129(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_number_s130(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::MaxP1, 1usize)]),
         _ => vec![],
     }
 }
-fn action_max_s130(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_max_s131(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::CLOSE_CURLY => Vec::from(&[Shift(State::CLOSE_CURLYS131)]),
+        TK::CLOSE_CURLY => Vec::from(&[Shift(State::CLOSE_CURLYS132)]),
         _ => vec![],
     }
 }
-fn action_close_curly_s131(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_close_curly_s132(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::CLOSE_PAREN => Vec::from(&[Reduce(PK::CardRange, 5usize)]),
         TK::CLOSE_CURLY => Vec::from(&[Reduce(PK::CardRange, 5usize)]),
@@ -2040,16 +2067,16 @@ fn action_close_curly_s131(token_kind: TokenKind) -> Vec<Action<State, ProdKind>
         _ => vec![],
     }
 }
-fn action_augl_s132(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_augl_s133(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::STOP => Vec::from(&[Reduce(PK::LayoutItem0P2, 0usize)]),
-        TK::WS => Vec::from(&[Shift(State::WSS133)]),
-        TK::CommentLine => Vec::from(&[Shift(State::CommentLineS134)]),
-        TK::START_COMMENT => Vec::from(&[Shift(State::START_COMMENTS135)]),
+        TK::WS => Vec::from(&[Shift(State::WSS134)]),
+        TK::CommentLine => Vec::from(&[Shift(State::CommentLineS135)]),
+        TK::START_COMMENT => Vec::from(&[Shift(State::START_COMMENTS136)]),
         _ => vec![],
     }
 }
-fn action_ws_s133(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_ws_s134(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::STOP => Vec::from(&[Reduce(PK::LayoutItemP1, 1usize)]),
         TK::WS => Vec::from(&[Reduce(PK::LayoutItemP1, 1usize)]),
@@ -2058,7 +2085,7 @@ fn action_ws_s133(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
         _ => vec![],
     }
 }
-fn action_commentline_s134(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_commentline_s135(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::STOP => Vec::from(&[Reduce(PK::CommentP2, 1usize)]),
         TK::WS => Vec::from(&[Reduce(PK::CommentP2, 1usize)]),
@@ -2069,38 +2096,38 @@ fn action_commentline_s134(token_kind: TokenKind) -> Vec<Action<State, ProdKind>
         _ => vec![],
     }
 }
-fn action_start_comment_s135(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_start_comment_s136(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::WS => Vec::from(&[Shift(State::WSS141)]),
-        TK::CommentLine => Vec::from(&[Shift(State::CommentLineS134)]),
-        TK::NotComment => Vec::from(&[Shift(State::NotCommentS142)]),
-        TK::START_COMMENT => Vec::from(&[Shift(State::START_COMMENTS135)]),
+        TK::WS => Vec::from(&[Shift(State::WSS142)]),
+        TK::CommentLine => Vec::from(&[Shift(State::CommentLineS135)]),
+        TK::NotComment => Vec::from(&[Shift(State::NotCommentS143)]),
+        TK::START_COMMENT => Vec::from(&[Shift(State::START_COMMENTS136)]),
         TK::END_COMMENT => Vec::from(&[Reduce(PK::Cornc0P2, 0usize)]),
         _ => vec![],
     }
 }
-fn action_layout_s136(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_layout_s137(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::STOP => Vec::from(&[Accept]),
         _ => vec![],
     }
 }
-fn action_layoutitem1_s137(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_layoutitem1_s138(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::STOP => Vec::from(&[Reduce(PK::LayoutItem0P1, 1usize)]),
-        TK::WS => Vec::from(&[Shift(State::WSS133)]),
-        TK::CommentLine => Vec::from(&[Shift(State::CommentLineS134)]),
-        TK::START_COMMENT => Vec::from(&[Shift(State::START_COMMENTS135)]),
+        TK::WS => Vec::from(&[Shift(State::WSS134)]),
+        TK::CommentLine => Vec::from(&[Shift(State::CommentLineS135)]),
+        TK::START_COMMENT => Vec::from(&[Shift(State::START_COMMENTS136)]),
         _ => vec![],
     }
 }
-fn action_layoutitem0_s138(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_layoutitem0_s139(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::STOP => Vec::from(&[Reduce(PK::LayoutP1, 1usize)]),
         _ => vec![],
     }
 }
-fn action_layoutitem_s139(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_layoutitem_s140(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::STOP => Vec::from(&[Reduce(PK::LayoutItem1P2, 1usize)]),
         TK::WS => Vec::from(&[Reduce(PK::LayoutItem1P2, 1usize)]),
@@ -2109,7 +2136,7 @@ fn action_layoutitem_s139(token_kind: TokenKind) -> Vec<Action<State, ProdKind>>
         _ => vec![],
     }
 }
-fn action_comment_s140(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_comment_s141(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::STOP => Vec::from(&[Reduce(PK::LayoutItemP2, 1usize)]),
         TK::WS => Vec::from(&[Reduce(PK::LayoutItemP2, 1usize)]),
@@ -2118,7 +2145,7 @@ fn action_comment_s140(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
         _ => vec![],
     }
 }
-fn action_ws_s141(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_ws_s142(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::WS => Vec::from(&[Reduce(PK::CorncP3, 1usize)]),
         TK::CommentLine => Vec::from(&[Reduce(PK::CorncP3, 1usize)]),
@@ -2128,7 +2155,7 @@ fn action_ws_s141(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
         _ => vec![],
     }
 }
-fn action_notcomment_s142(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_notcomment_s143(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::WS => Vec::from(&[Reduce(PK::CorncP2, 1usize)]),
         TK::CommentLine => Vec::from(&[Reduce(PK::CorncP2, 1usize)]),
@@ -2138,7 +2165,7 @@ fn action_notcomment_s142(token_kind: TokenKind) -> Vec<Action<State, ProdKind>>
         _ => vec![],
     }
 }
-fn action_comment_s143(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_comment_s144(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::WS => Vec::from(&[Reduce(PK::CorncP1, 1usize)]),
         TK::CommentLine => Vec::from(&[Reduce(PK::CorncP1, 1usize)]),
@@ -2148,29 +2175,29 @@ fn action_comment_s143(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
         _ => vec![],
     }
 }
-fn action_corncs_s144(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_corncs_s145(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::END_COMMENT => Vec::from(&[Shift(State::END_COMMENTS149)]),
+        TK::END_COMMENT => Vec::from(&[Shift(State::END_COMMENTS150)]),
         _ => vec![],
     }
 }
-fn action_cornc1_s145(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_cornc1_s146(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::WS => Vec::from(&[Shift(State::WSS141)]),
-        TK::CommentLine => Vec::from(&[Shift(State::CommentLineS134)]),
-        TK::NotComment => Vec::from(&[Shift(State::NotCommentS142)]),
-        TK::START_COMMENT => Vec::from(&[Shift(State::START_COMMENTS135)]),
+        TK::WS => Vec::from(&[Shift(State::WSS142)]),
+        TK::CommentLine => Vec::from(&[Shift(State::CommentLineS135)]),
+        TK::NotComment => Vec::from(&[Shift(State::NotCommentS143)]),
+        TK::START_COMMENT => Vec::from(&[Shift(State::START_COMMENTS136)]),
         TK::END_COMMENT => Vec::from(&[Reduce(PK::Cornc0P1, 1usize)]),
         _ => vec![],
     }
 }
-fn action_cornc0_s146(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_cornc0_s147(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::END_COMMENT => Vec::from(&[Reduce(PK::CorncsP1, 1usize)]),
         _ => vec![],
     }
 }
-fn action_cornc_s147(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_cornc_s148(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::WS => Vec::from(&[Reduce(PK::Cornc1P2, 1usize)]),
         TK::CommentLine => Vec::from(&[Reduce(PK::Cornc1P2, 1usize)]),
@@ -2180,7 +2207,7 @@ fn action_cornc_s147(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
         _ => vec![],
     }
 }
-fn action_layoutitem_s148(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_layoutitem_s149(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::STOP => Vec::from(&[Reduce(PK::LayoutItem1P1, 2usize)]),
         TK::WS => Vec::from(&[Reduce(PK::LayoutItem1P1, 2usize)]),
@@ -2189,7 +2216,7 @@ fn action_layoutitem_s148(token_kind: TokenKind) -> Vec<Action<State, ProdKind>>
         _ => vec![],
     }
 }
-fn action_end_comment_s149(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_end_comment_s150(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::STOP => Vec::from(&[Reduce(PK::CommentP1, 3usize)]),
         TK::WS => Vec::from(&[Reduce(PK::CommentP1, 3usize)]),
@@ -2200,7 +2227,7 @@ fn action_end_comment_s149(token_kind: TokenKind) -> Vec<Action<State, ProdKind>
         _ => vec![],
     }
 }
-fn action_cornc_s150(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_cornc_s151(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::WS => Vec::from(&[Reduce(PK::Cornc1P1, 2usize)]),
         TK::CommentLine => Vec::from(&[Reduce(PK::Cornc1P1, 2usize)]),
@@ -2277,7 +2304,8 @@ fn goto_type_s14(nonterm_kind: NonTermKind) -> State {
 }
 fn goto_open_paren_s16(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
-        NonTermKind::TypeName => State::TypeNameS24,
+        NonTermKind::TypeNameOpt => State::TypeNameOptS24,
+        NonTermKind::TypeName => State::TypeNameS25,
         _ => {
             panic!(
                 "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
@@ -2288,9 +2316,9 @@ fn goto_open_paren_s16(nonterm_kind: NonTermKind) -> State {
 }
 fn goto_open_paren_s18(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
-        NonTermKind::LabelPropertySpec => State::LabelPropertySpecS26,
-        NonTermKind::LabelSpecOpt => State::LabelSpecOptS27,
-        NonTermKind::LabelSpec => State::LabelSpecS28,
+        NonTermKind::LabelPropertySpec => State::LabelPropertySpecS27,
+        NonTermKind::LabelSpecOpt => State::LabelSpecOptS28,
+        NonTermKind::LabelSpec => State::LabelSpecS29,
         _ => {
             panic!(
                 "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
@@ -2299,145 +2327,134 @@ fn goto_open_paren_s18(nonterm_kind: NonTermKind) -> State {
         }
     }
 }
-fn goto_typename_s24(nonterm_kind: NonTermKind) -> State {
+fn goto_typenameopt_s24(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
-        NonTermKind::LabelPropertySpec => State::LabelPropertySpecS31,
-        NonTermKind::LabelSpecOpt => State::LabelSpecOptS27,
-        NonTermKind::LabelSpec => State::LabelSpecS28,
+        NonTermKind::LabelPropertySpec => State::LabelPropertySpecS32,
+        NonTermKind::LabelSpecOpt => State::LabelSpecOptS28,
+        NonTermKind::LabelSpec => State::LabelSpecS29,
         _ => {
             panic!(
                 "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
-                State::TypeNameS24
+                State::TypeNameOptS24
             )
         }
     }
 }
-fn goto_colon_s25(nonterm_kind: NonTermKind) -> State {
+fn goto_colon_s26(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
-        NonTermKind::Labels => State::LabelsS34,
-        NonTermKind::SingleLabel => State::SingleLabelS35,
+        NonTermKind::Labels => State::LabelsS35,
+        NonTermKind::SingleLabel => State::SingleLabelS36,
         _ => {
             panic!(
                 "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
-                State::COLONS25
+                State::COLONS26
             )
         }
     }
 }
-fn goto_labelspecopt_s27(nonterm_kind: NonTermKind) -> State {
+fn goto_labelspecopt_s28(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
-        NonTermKind::PropertySpecOpt => State::PropertySpecOptS38,
-        NonTermKind::PropertySpec => State::PropertySpecS39,
+        NonTermKind::PropertySpecOpt => State::PropertySpecOptS39,
+        NonTermKind::PropertySpec => State::PropertySpecS40,
         _ => {
             panic!(
                 "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
-                State::LabelSpecOptS27
+                State::LabelSpecOptS28
             )
         }
     }
 }
-fn goto_open_arrow_s29(nonterm_kind: NonTermKind) -> State {
+fn goto_open_arrow_s30(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
-        NonTermKind::TypeName => State::TypeNameS40,
+        NonTermKind::TypeNameOpt => State::TypeNameOptS41,
+        NonTermKind::TypeName => State::TypeNameS25,
         _ => {
             panic!(
                 "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
-                State::OPEN_ARROWS29
+                State::OPEN_ARROWS30
             )
         }
     }
 }
-fn goto_singlelabel_s35(nonterm_kind: NonTermKind) -> State {
+fn goto_singlelabel_s36(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
-        NonTermKind::MoreLabelsOpt => State::MoreLabelsOptS46,
-        NonTermKind::MoreLabels => State::MoreLabelsS47,
+        NonTermKind::MoreLabelsOpt => State::MoreLabelsOptS47,
+        NonTermKind::MoreLabels => State::MoreLabelsS48,
         _ => {
             panic!(
                 "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
-                State::SingleLabelS35
+                State::SingleLabelS36
             )
         }
     }
 }
-fn goto_open_curly_s37(nonterm_kind: NonTermKind) -> State {
+fn goto_open_curly_s38(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
-        NonTermKind::Properties => State::PropertiesS50,
-        NonTermKind::OPTIONALOpt => State::OPTIONALOptS51,
+        NonTermKind::Properties => State::PropertiesS51,
+        NonTermKind::OPTIONALOpt => State::OPTIONALOptS52,
         _ => {
             panic!(
                 "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
-                State::OPEN_CURLYS37
+                State::OPEN_CURLYS38
             )
         }
     }
 }
-fn goto_typename_s40(nonterm_kind: NonTermKind) -> State {
+fn goto_typenameopt_s41(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
-        NonTermKind::LabelPropertySpec => State::LabelPropertySpecS52,
-        NonTermKind::LabelSpecOpt => State::LabelSpecOptS27,
-        NonTermKind::LabelSpec => State::LabelSpecS28,
+        NonTermKind::LabelPropertySpec => State::LabelPropertySpecS53,
+        NonTermKind::LabelSpecOpt => State::LabelSpecOptS28,
+        NonTermKind::LabelSpec => State::LabelSpecS29,
         _ => {
             panic!(
                 "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
-                State::TypeNameS40
+                State::TypeNameOptS41
             )
         }
     }
 }
-fn goto_bar_s44(nonterm_kind: NonTermKind) -> State {
-    match nonterm_kind {
-        NonTermKind::SingleLabel => State::SingleLabelS53,
-        _ => {
-            panic!(
-                "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
-                State::BARS44
-            )
-        }
-    }
-}
-fn goto_ampersand_s45(nonterm_kind: NonTermKind) -> State {
+fn goto_bar_s45(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
         NonTermKind::SingleLabel => State::SingleLabelS54,
         _ => {
             panic!(
                 "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
-                State::AMPERSANDS45
+                State::BARS45
             )
         }
     }
 }
-fn goto_open_paren_s48(nonterm_kind: NonTermKind) -> State {
+fn goto_ampersand_s46(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
-        NonTermKind::Properties => State::PropertiesS55,
-        NonTermKind::OPTIONALOpt => State::OPTIONALOptS51,
+        NonTermKind::SingleLabel => State::SingleLabelS55,
         _ => {
             panic!(
                 "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
-                State::OPEN_PARENS48
+                State::AMPERSANDS46
             )
         }
     }
 }
-fn goto_optionalopt_s51(nonterm_kind: NonTermKind) -> State {
+fn goto_open_paren_s49(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
-        NonTermKind::Property => State::PropertyS60,
-        NonTermKind::key => State::keyS61,
+        NonTermKind::Properties => State::PropertiesS56,
+        NonTermKind::OPTIONALOpt => State::OPTIONALOptS52,
         _ => {
             panic!(
                 "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
-                State::OPTIONALOptS51
+                State::OPEN_PARENS49
             )
         }
     }
 }
-fn goto_singlelabel_s53(nonterm_kind: NonTermKind) -> State {
+fn goto_optionalopt_s52(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
-        NonTermKind::MoreLabelsOpt => State::MoreLabelsOptS63,
-        NonTermKind::MoreLabels => State::MoreLabelsS47,
+        NonTermKind::Property => State::PropertyS61,
+        NonTermKind::key => State::keyS62,
         _ => {
             panic!(
                 "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
-                State::SingleLabelS53
+                State::OPTIONALOptS52
             )
         }
     }
@@ -2445,7 +2462,7 @@ fn goto_singlelabel_s53(nonterm_kind: NonTermKind) -> State {
 fn goto_singlelabel_s54(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
         NonTermKind::MoreLabelsOpt => State::MoreLabelsOptS64,
-        NonTermKind::MoreLabels => State::MoreLabelsS47,
+        NonTermKind::MoreLabels => State::MoreLabelsS48,
         _ => {
             panic!(
                 "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
@@ -2454,144 +2471,144 @@ fn goto_singlelabel_s54(nonterm_kind: NonTermKind) -> State {
         }
     }
 }
-fn goto_comma_s57(nonterm_kind: NonTermKind) -> State {
+fn goto_singlelabel_s55(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
-        NonTermKind::Properties => State::PropertiesS66,
-        NonTermKind::OPTIONALOpt => State::OPTIONALOptS51,
+        NonTermKind::MoreLabelsOpt => State::MoreLabelsOptS65,
+        NonTermKind::MoreLabels => State::MoreLabelsS48,
         _ => {
             panic!(
                 "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
-                State::COMMAS57
+                State::SingleLabelS55
             )
         }
     }
 }
-fn goto_double_bar_s58(nonterm_kind: NonTermKind) -> State {
+fn goto_comma_s58(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
         NonTermKind::Properties => State::PropertiesS67,
-        NonTermKind::OPTIONALOpt => State::OPTIONALOptS51,
+        NonTermKind::OPTIONALOpt => State::OPTIONALOptS52,
         _ => {
             panic!(
                 "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
-                State::DOUBLE_BARS58
+                State::COMMAS58
             )
         }
     }
 }
-fn goto_close_arrow_s62(nonterm_kind: NonTermKind) -> State {
+fn goto_double_bar_s59(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
-        NonTermKind::EndpointType => State::EndpointTypeS69,
+        NonTermKind::Properties => State::PropertiesS68,
+        NonTermKind::OPTIONALOpt => State::OPTIONALOptS52,
         _ => {
             panic!(
                 "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
-                State::CLOSE_ARROWS62
+                State::DOUBLE_BARS59
             )
         }
     }
 }
-fn goto_colon_s68(nonterm_kind: NonTermKind) -> State {
+fn goto_close_arrow_s63(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
-        NonTermKind::TypeSpec => State::TypeSpecS75,
-        NonTermKind::SimpleType => State::SimpleTypeS76,
+        NonTermKind::EndpointType => State::EndpointTypeS70,
         _ => {
             panic!(
                 "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
-                State::COLONS68
+                State::CLOSE_ARROWS63
             )
         }
     }
 }
-fn goto_integer_name_s70(nonterm_kind: NonTermKind) -> State {
+fn goto_colon_s69(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
-        NonTermKind::CardOpt => State::CardOptS81,
-        NonTermKind::Card => State::CardS82,
+        NonTermKind::TypeSpec => State::TypeSpecS76,
+        NonTermKind::SimpleType => State::SimpleTypeS77,
         _ => {
             panic!(
                 "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
-                State::INTEGER_NAMES70
+                State::COLONS69
             )
         }
     }
 }
-fn goto_string_name_s71(nonterm_kind: NonTermKind) -> State {
+fn goto_integer_name_s71(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
-        NonTermKind::CardOpt => State::CardOptS83,
-        NonTermKind::Card => State::CardS82,
+        NonTermKind::CardOpt => State::CardOptS82,
+        NonTermKind::Card => State::CardS83,
         _ => {
             panic!(
                 "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
-                State::STRING_NAMES71
+                State::INTEGER_NAMES71
             )
         }
     }
 }
-fn goto_date_name_s72(nonterm_kind: NonTermKind) -> State {
+fn goto_string_name_s72(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
         NonTermKind::CardOpt => State::CardOptS84,
-        NonTermKind::Card => State::CardS82,
+        NonTermKind::Card => State::CardS83,
         _ => {
             panic!(
                 "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
-                State::DATE_NAMES72
+                State::STRING_NAMES72
             )
         }
     }
 }
-fn goto_check_s73(nonterm_kind: NonTermKind) -> State {
+fn goto_date_name_s73(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
-        NonTermKind::Cond => State::CondS95,
+        NonTermKind::CardOpt => State::CardOptS85,
+        NonTermKind::Card => State::CardS83,
         _ => {
             panic!(
                 "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
-                State::CHECKS73
+                State::DATE_NAMES73
             )
         }
     }
 }
-fn goto_any_s74(nonterm_kind: NonTermKind) -> State {
+fn goto_check_s74(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
-        NonTermKind::CheckOpt => State::CheckOptS97,
-        NonTermKind::Check => State::CheckS98,
+        NonTermKind::Cond => State::CondS96,
         _ => {
             panic!(
                 "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
-                State::ANYS74
+                State::CHECKS74
             )
         }
     }
 }
-fn goto_simpletype_s76(nonterm_kind: NonTermKind) -> State {
+fn goto_any_s75(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
-        NonTermKind::MoreTypesOpt => State::MoreTypesOptS101,
-        NonTermKind::MoreTypes => State::MoreTypesS102,
+        NonTermKind::CheckOpt => State::CheckOptS98,
+        NonTermKind::Check => State::CheckS99,
         _ => {
             panic!(
                 "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
-                State::SimpleTypeS76
+                State::ANYS75
             )
         }
     }
 }
-fn goto_cardopt_s81(nonterm_kind: NonTermKind) -> State {
+fn goto_simpletype_s77(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
-        NonTermKind::CheckOpt => State::CheckOptS104,
-        NonTermKind::Check => State::CheckS98,
+        NonTermKind::MoreTypesOpt => State::MoreTypesOptS102,
+        NonTermKind::MoreTypes => State::MoreTypesS103,
         _ => {
             panic!(
                 "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
-                State::CardOptS81
+                State::SimpleTypeS77
             )
         }
     }
 }
-fn goto_cardopt_s83(nonterm_kind: NonTermKind) -> State {
+fn goto_cardopt_s82(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
         NonTermKind::CheckOpt => State::CheckOptS105,
-        NonTermKind::Check => State::CheckS98,
+        NonTermKind::Check => State::CheckS99,
         _ => {
             panic!(
                 "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
-                State::CardOptS83
+                State::CardOptS82
             )
         }
     }
@@ -2599,7 +2616,7 @@ fn goto_cardopt_s83(nonterm_kind: NonTermKind) -> State {
 fn goto_cardopt_s84(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
         NonTermKind::CheckOpt => State::CheckOptS106,
-        NonTermKind::Check => State::CheckS98,
+        NonTermKind::Check => State::CheckS99,
         _ => {
             panic!(
                 "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
@@ -2608,146 +2625,146 @@ fn goto_cardopt_s84(nonterm_kind: NonTermKind) -> State {
         }
     }
 }
-fn goto_open_paren_s85(nonterm_kind: NonTermKind) -> State {
+fn goto_cardopt_s85(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
-        NonTermKind::Cond => State::CondS107,
+        NonTermKind::CheckOpt => State::CheckOptS107,
+        NonTermKind::Check => State::CheckS99,
         _ => {
             panic!(
                 "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
-                State::OPEN_PARENS85
+                State::CardOptS85
             )
         }
     }
 }
-fn goto_gt_s88(nonterm_kind: NonTermKind) -> State {
+fn goto_open_paren_s86(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
-        NonTermKind::SingleValue => State::SingleValueS110,
+        NonTermKind::Cond => State::CondS108,
         _ => {
             panic!(
                 "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
-                State::GTS88
+                State::OPEN_PARENS86
             )
         }
     }
 }
-fn goto_lt_s89(nonterm_kind: NonTermKind) -> State {
+fn goto_gt_s89(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
         NonTermKind::SingleValue => State::SingleValueS111,
         _ => {
             panic!(
                 "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
-                State::LTS89
+                State::GTS89
             )
         }
     }
 }
-fn goto_ge_s90(nonterm_kind: NonTermKind) -> State {
+fn goto_lt_s90(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
         NonTermKind::SingleValue => State::SingleValueS112,
         _ => {
             panic!(
                 "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
-                State::GES90
+                State::LTS90
             )
         }
     }
 }
-fn goto_le_s91(nonterm_kind: NonTermKind) -> State {
+fn goto_ge_s91(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
         NonTermKind::SingleValue => State::SingleValueS113,
         _ => {
             panic!(
                 "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
-                State::LES91
+                State::GES91
             )
         }
     }
 }
-fn goto_equals_s92(nonterm_kind: NonTermKind) -> State {
+fn goto_le_s92(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
         NonTermKind::SingleValue => State::SingleValueS114,
         _ => {
             panic!(
                 "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
-                State::EQUALSS92
+                State::LES92
             )
         }
     }
 }
-fn goto_not_s94(nonterm_kind: NonTermKind) -> State {
+fn goto_equals_s93(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
-        NonTermKind::Cond => State::CondS116,
+        NonTermKind::SingleValue => State::SingleValueS115,
         _ => {
             panic!(
                 "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
-                State::NOTS94
+                State::EQUALSS93
             )
         }
     }
 }
-fn goto_check_s96(nonterm_kind: NonTermKind) -> State {
+fn goto_not_s95(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
-        NonTermKind::Cond => State::CondS119,
+        NonTermKind::Cond => State::CondS117,
         _ => {
             panic!(
                 "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
-                State::CHECKS96
+                State::NOTS95
             )
         }
     }
 }
-fn goto_bar_s99(nonterm_kind: NonTermKind) -> State {
+fn goto_check_s97(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
-        NonTermKind::SimpleType => State::SimpleTypeS120,
+        NonTermKind::Cond => State::CondS120,
         _ => {
             panic!(
                 "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
-                State::BARS99
+                State::CHECKS97
             )
         }
     }
 }
-fn goto_ampersand_s100(nonterm_kind: NonTermKind) -> State {
+fn goto_bar_s100(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
         NonTermKind::SimpleType => State::SimpleTypeS121,
         _ => {
             panic!(
                 "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
-                State::AMPERSANDS100
+                State::BARS100
             )
         }
     }
 }
-fn goto_and_s117(nonterm_kind: NonTermKind) -> State {
+fn goto_ampersand_s101(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
-        NonTermKind::Cond => State::CondS124,
+        NonTermKind::SimpleType => State::SimpleTypeS122,
         _ => {
             panic!(
                 "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
-                State::ANDS117
+                State::AMPERSANDS101
             )
         }
     }
 }
-fn goto_or_s118(nonterm_kind: NonTermKind) -> State {
+fn goto_and_s118(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
         NonTermKind::Cond => State::CondS125,
         _ => {
             panic!(
                 "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
-                State::ORS118
+                State::ANDS118
             )
         }
     }
 }
-fn goto_simpletype_s120(nonterm_kind: NonTermKind) -> State {
+fn goto_or_s119(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
-        NonTermKind::MoreTypesOpt => State::MoreTypesOptS126,
-        NonTermKind::MoreTypes => State::MoreTypesS102,
+        NonTermKind::Cond => State::CondS126,
         _ => {
             panic!(
                 "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
-                State::SimpleTypeS120
+                State::ORS119
             )
         }
     }
@@ -2755,7 +2772,7 @@ fn goto_simpletype_s120(nonterm_kind: NonTermKind) -> State {
 fn goto_simpletype_s121(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
         NonTermKind::MoreTypesOpt => State::MoreTypesOptS127,
-        NonTermKind::MoreTypes => State::MoreTypesS102,
+        NonTermKind::MoreTypes => State::MoreTypesS103,
         _ => {
             panic!(
                 "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
@@ -2764,67 +2781,79 @@ fn goto_simpletype_s121(nonterm_kind: NonTermKind) -> State {
         }
     }
 }
-fn goto_comma_s122(nonterm_kind: NonTermKind) -> State {
+fn goto_simpletype_s122(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
-        NonTermKind::Max => State::MaxS130,
+        NonTermKind::MoreTypesOpt => State::MoreTypesOptS128,
+        NonTermKind::MoreTypes => State::MoreTypesS103,
         _ => {
             panic!(
                 "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
-                State::COMMAS122
+                State::SimpleTypeS122
             )
         }
     }
 }
-fn goto_augl_s132(nonterm_kind: NonTermKind) -> State {
+fn goto_comma_s123(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
-        NonTermKind::Layout => State::LayoutS136,
-        NonTermKind::LayoutItem1 => State::LayoutItem1S137,
-        NonTermKind::LayoutItem0 => State::LayoutItem0S138,
-        NonTermKind::LayoutItem => State::LayoutItemS139,
-        NonTermKind::Comment => State::CommentS140,
+        NonTermKind::Max => State::MaxS131,
         _ => {
             panic!(
                 "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
-                State::AUGLS132
+                State::COMMAS123
             )
         }
     }
 }
-fn goto_start_comment_s135(nonterm_kind: NonTermKind) -> State {
+fn goto_augl_s133(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
-        NonTermKind::Comment => State::CommentS143,
-        NonTermKind::Corncs => State::CorncsS144,
-        NonTermKind::Cornc1 => State::Cornc1S145,
-        NonTermKind::Cornc0 => State::Cornc0S146,
-        NonTermKind::Cornc => State::CorncS147,
+        NonTermKind::Layout => State::LayoutS137,
+        NonTermKind::LayoutItem1 => State::LayoutItem1S138,
+        NonTermKind::LayoutItem0 => State::LayoutItem0S139,
+        NonTermKind::LayoutItem => State::LayoutItemS140,
+        NonTermKind::Comment => State::CommentS141,
         _ => {
             panic!(
                 "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
-                State::START_COMMENTS135
+                State::AUGLS133
             )
         }
     }
 }
-fn goto_layoutitem1_s137(nonterm_kind: NonTermKind) -> State {
+fn goto_start_comment_s136(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
-        NonTermKind::LayoutItem => State::LayoutItemS148,
-        NonTermKind::Comment => State::CommentS140,
+        NonTermKind::Comment => State::CommentS144,
+        NonTermKind::Corncs => State::CorncsS145,
+        NonTermKind::Cornc1 => State::Cornc1S146,
+        NonTermKind::Cornc0 => State::Cornc0S147,
+        NonTermKind::Cornc => State::CorncS148,
         _ => {
             panic!(
                 "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
-                State::LayoutItem1S137
+                State::START_COMMENTS136
             )
         }
     }
 }
-fn goto_cornc1_s145(nonterm_kind: NonTermKind) -> State {
+fn goto_layoutitem1_s138(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
-        NonTermKind::Comment => State::CommentS143,
-        NonTermKind::Cornc => State::CorncS150,
+        NonTermKind::LayoutItem => State::LayoutItemS149,
+        NonTermKind::Comment => State::CommentS141,
         _ => {
             panic!(
                 "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
-                State::Cornc1S145
+                State::LayoutItem1S138
+            )
+        }
+    }
+}
+fn goto_cornc1_s146(nonterm_kind: NonTermKind) -> State {
+    match nonterm_kind {
+        NonTermKind::Comment => State::CommentS144,
+        NonTermKind::Cornc => State::CorncS151,
+        _ => {
+            panic!(
+                "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
+                State::Cornc1S146
             )
         }
     }
@@ -2858,133 +2887,134 @@ pub(crate) static PARSER_DEFINITION: PgsParserDefinition = PgsParserDefinition {
         action_identifier_s21,
         action_graphtype_s22,
         action_typename_s23,
-        action_typename_s24,
-        action_colon_s25,
-        action_labelpropertyspec_s26,
-        action_labelspecopt_s27,
-        action_labelspec_s28,
-        action_open_arrow_s29,
-        action_open_curly_s30,
-        action_labelpropertyspec_s31,
-        action_identifier_s32,
-        action_at_s33,
-        action_labels_s34,
-        action_singlelabel_s35,
-        action_close_paren_s36,
-        action_open_curly_s37,
-        action_propertyspecopt_s38,
-        action_propertyspec_s39,
-        action_typename_s40,
-        action_close_curly_s41,
-        action_close_paren_s42,
-        action_identifier_s43,
-        action_bar_s44,
-        action_ampersand_s45,
-        action_morelabelsopt_s46,
-        action_morelabels_s47,
-        action_open_paren_s48,
-        action_optional_s49,
-        action_properties_s50,
-        action_optionalopt_s51,
-        action_labelpropertyspec_s52,
-        action_singlelabel_s53,
+        action_typenameopt_s24,
+        action_typename_s25,
+        action_colon_s26,
+        action_labelpropertyspec_s27,
+        action_labelspecopt_s28,
+        action_labelspec_s29,
+        action_open_arrow_s30,
+        action_open_curly_s31,
+        action_labelpropertyspec_s32,
+        action_identifier_s33,
+        action_at_s34,
+        action_labels_s35,
+        action_singlelabel_s36,
+        action_close_paren_s37,
+        action_open_curly_s38,
+        action_propertyspecopt_s39,
+        action_propertyspec_s40,
+        action_typenameopt_s41,
+        action_close_curly_s42,
+        action_close_paren_s43,
+        action_identifier_s44,
+        action_bar_s45,
+        action_ampersand_s46,
+        action_morelabelsopt_s47,
+        action_morelabels_s48,
+        action_open_paren_s49,
+        action_optional_s50,
+        action_properties_s51,
+        action_optionalopt_s52,
+        action_labelpropertyspec_s53,
         action_singlelabel_s54,
-        action_properties_s55,
-        action_close_curly_s56,
-        action_comma_s57,
-        action_double_bar_s58,
-        action_identifier_s59,
-        action_property_s60,
-        action_key_s61,
-        action_close_arrow_s62,
-        action_morelabelsopt_s63,
+        action_singlelabel_s55,
+        action_properties_s56,
+        action_close_curly_s57,
+        action_comma_s58,
+        action_double_bar_s59,
+        action_identifier_s60,
+        action_property_s61,
+        action_key_s62,
+        action_close_arrow_s63,
         action_morelabelsopt_s64,
-        action_close_paren_s65,
-        action_properties_s66,
+        action_morelabelsopt_s65,
+        action_close_paren_s66,
         action_properties_s67,
-        action_colon_s68,
-        action_endpointtype_s69,
-        action_integer_name_s70,
-        action_string_name_s71,
-        action_date_name_s72,
-        action_check_s73,
-        action_any_s74,
-        action_typespec_s75,
-        action_simpletype_s76,
-        action_open_curly_s77,
-        action_plus_s78,
-        action_star_s79,
-        action_question_s80,
-        action_cardopt_s81,
-        action_card_s82,
-        action_cardopt_s83,
+        action_properties_s68,
+        action_colon_s69,
+        action_endpointtype_s70,
+        action_integer_name_s71,
+        action_string_name_s72,
+        action_date_name_s73,
+        action_check_s74,
+        action_any_s75,
+        action_typespec_s76,
+        action_simpletype_s77,
+        action_open_curly_s78,
+        action_plus_s79,
+        action_star_s80,
+        action_question_s81,
+        action_cardopt_s82,
+        action_card_s83,
         action_cardopt_s84,
-        action_open_paren_s85,
-        action_true_s86,
-        action_false_s87,
-        action_gt_s88,
-        action_lt_s89,
-        action_ge_s90,
-        action_le_s91,
-        action_equals_s92,
-        action_regex_s93,
-        action_not_s94,
-        action_cond_s95,
-        action_check_s96,
-        action_checkopt_s97,
-        action_check_s98,
-        action_bar_s99,
-        action_ampersand_s100,
-        action_moretypesopt_s101,
-        action_moretypes_s102,
-        action_number_s103,
-        action_checkopt_s104,
+        action_cardopt_s85,
+        action_open_paren_s86,
+        action_true_s87,
+        action_false_s88,
+        action_gt_s89,
+        action_lt_s90,
+        action_ge_s91,
+        action_le_s92,
+        action_equals_s93,
+        action_regex_s94,
+        action_not_s95,
+        action_cond_s96,
+        action_check_s97,
+        action_checkopt_s98,
+        action_check_s99,
+        action_bar_s100,
+        action_ampersand_s101,
+        action_moretypesopt_s102,
+        action_moretypes_s103,
+        action_number_s104,
         action_checkopt_s105,
         action_checkopt_s106,
-        action_cond_s107,
-        action_number_s108,
-        action_quoted_string_s109,
-        action_singlevalue_s110,
+        action_checkopt_s107,
+        action_cond_s108,
+        action_number_s109,
+        action_quoted_string_s110,
         action_singlevalue_s111,
         action_singlevalue_s112,
         action_singlevalue_s113,
         action_singlevalue_s114,
-        action_quoted_string_s115,
-        action_cond_s116,
-        action_and_s117,
-        action_or_s118,
-        action_cond_s119,
-        action_simpletype_s120,
+        action_singlevalue_s115,
+        action_quoted_string_s116,
+        action_cond_s117,
+        action_and_s118,
+        action_or_s119,
+        action_cond_s120,
         action_simpletype_s121,
-        action_comma_s122,
-        action_close_paren_s123,
-        action_cond_s124,
+        action_simpletype_s122,
+        action_comma_s123,
+        action_close_paren_s124,
         action_cond_s125,
-        action_moretypesopt_s126,
+        action_cond_s126,
         action_moretypesopt_s127,
-        action_star_s128,
-        action_number_s129,
-        action_max_s130,
-        action_close_curly_s131,
-        action_augl_s132,
-        action_ws_s133,
-        action_commentline_s134,
-        action_start_comment_s135,
-        action_layout_s136,
-        action_layoutitem1_s137,
-        action_layoutitem0_s138,
-        action_layoutitem_s139,
-        action_comment_s140,
-        action_ws_s141,
-        action_notcomment_s142,
-        action_comment_s143,
-        action_corncs_s144,
-        action_cornc1_s145,
-        action_cornc0_s146,
-        action_cornc_s147,
-        action_layoutitem_s148,
-        action_end_comment_s149,
-        action_cornc_s150,
+        action_moretypesopt_s128,
+        action_star_s129,
+        action_number_s130,
+        action_max_s131,
+        action_close_curly_s132,
+        action_augl_s133,
+        action_ws_s134,
+        action_commentline_s135,
+        action_start_comment_s136,
+        action_layout_s137,
+        action_layoutitem1_s138,
+        action_layoutitem0_s139,
+        action_layoutitem_s140,
+        action_comment_s141,
+        action_ws_s142,
+        action_notcomment_s143,
+        action_comment_s144,
+        action_corncs_s145,
+        action_cornc1_s146,
+        action_cornc0_s147,
+        action_cornc_s148,
+        action_layoutitem_s149,
+        action_end_comment_s150,
+        action_cornc_s151,
     ],
     gotos: [
         goto_aug_s0,
@@ -3011,87 +3041,84 @@ pub(crate) static PARSER_DEFINITION: PgsParserDefinition = PgsParserDefinition {
         goto_invalid,
         goto_invalid,
         goto_invalid,
-        goto_typename_s24,
-        goto_colon_s25,
+        goto_typenameopt_s24,
         goto_invalid,
-        goto_labelspecopt_s27,
+        goto_colon_s26,
         goto_invalid,
-        goto_open_arrow_s29,
+        goto_labelspecopt_s28,
         goto_invalid,
-        goto_invalid,
-        goto_invalid,
-        goto_invalid,
-        goto_invalid,
-        goto_singlelabel_s35,
-        goto_invalid,
-        goto_open_curly_s37,
-        goto_invalid,
-        goto_invalid,
-        goto_typename_s40,
+        goto_open_arrow_s30,
         goto_invalid,
         goto_invalid,
         goto_invalid,
-        goto_bar_s44,
-        goto_ampersand_s45,
         goto_invalid,
         goto_invalid,
-        goto_open_paren_s48,
+        goto_singlelabel_s36,
+        goto_invalid,
+        goto_open_curly_s38,
         goto_invalid,
         goto_invalid,
-        goto_optionalopt_s51,
+        goto_typenameopt_s41,
         goto_invalid,
-        goto_singlelabel_s53,
+        goto_invalid,
+        goto_invalid,
+        goto_bar_s45,
+        goto_ampersand_s46,
+        goto_invalid,
+        goto_invalid,
+        goto_open_paren_s49,
+        goto_invalid,
+        goto_invalid,
+        goto_optionalopt_s52,
+        goto_invalid,
         goto_singlelabel_s54,
+        goto_singlelabel_s55,
         goto_invalid,
         goto_invalid,
-        goto_comma_s57,
-        goto_double_bar_s58,
-        goto_invalid,
-        goto_invalid,
-        goto_invalid,
-        goto_close_arrow_s62,
+        goto_comma_s58,
+        goto_double_bar_s59,
         goto_invalid,
         goto_invalid,
         goto_invalid,
-        goto_invalid,
-        goto_invalid,
-        goto_colon_s68,
-        goto_invalid,
-        goto_integer_name_s70,
-        goto_string_name_s71,
-        goto_date_name_s72,
-        goto_check_s73,
-        goto_any_s74,
-        goto_invalid,
-        goto_simpletype_s76,
+        goto_close_arrow_s63,
         goto_invalid,
         goto_invalid,
         goto_invalid,
         goto_invalid,
-        goto_cardopt_s81,
         goto_invalid,
-        goto_cardopt_s83,
+        goto_colon_s69,
+        goto_invalid,
+        goto_integer_name_s71,
+        goto_string_name_s72,
+        goto_date_name_s73,
+        goto_check_s74,
+        goto_any_s75,
+        goto_invalid,
+        goto_simpletype_s77,
+        goto_invalid,
+        goto_invalid,
+        goto_invalid,
+        goto_invalid,
+        goto_cardopt_s82,
+        goto_invalid,
         goto_cardopt_s84,
-        goto_open_paren_s85,
+        goto_cardopt_s85,
+        goto_open_paren_s86,
         goto_invalid,
         goto_invalid,
-        goto_gt_s88,
-        goto_lt_s89,
-        goto_ge_s90,
-        goto_le_s91,
-        goto_equals_s92,
+        goto_gt_s89,
+        goto_lt_s90,
+        goto_ge_s91,
+        goto_le_s92,
+        goto_equals_s93,
         goto_invalid,
-        goto_not_s94,
+        goto_not_s95,
         goto_invalid,
-        goto_check_s96,
-        goto_invalid,
-        goto_invalid,
-        goto_bar_s99,
-        goto_ampersand_s100,
+        goto_check_s97,
         goto_invalid,
         goto_invalid,
-        goto_invalid,
-        goto_invalid,
+        goto_bar_s100,
+        goto_ampersand_s101,
         goto_invalid,
         goto_invalid,
         goto_invalid,
@@ -3104,12 +3131,16 @@ pub(crate) static PARSER_DEFINITION: PgsParserDefinition = PgsParserDefinition {
         goto_invalid,
         goto_invalid,
         goto_invalid,
-        goto_and_s117,
-        goto_or_s118,
         goto_invalid,
-        goto_simpletype_s120,
+        goto_invalid,
+        goto_invalid,
+        goto_invalid,
+        goto_and_s118,
+        goto_or_s119,
+        goto_invalid,
         goto_simpletype_s121,
-        goto_comma_s122,
+        goto_simpletype_s122,
+        goto_comma_s123,
         goto_invalid,
         goto_invalid,
         goto_invalid,
@@ -3119,20 +3150,20 @@ pub(crate) static PARSER_DEFINITION: PgsParserDefinition = PgsParserDefinition {
         goto_invalid,
         goto_invalid,
         goto_invalid,
-        goto_augl_s132,
+        goto_augl_s133,
         goto_invalid,
         goto_invalid,
-        goto_start_comment_s135,
+        goto_start_comment_s136,
         goto_invalid,
-        goto_layoutitem1_s137,
-        goto_invalid,
-        goto_invalid,
-        goto_invalid,
+        goto_layoutitem1_s138,
         goto_invalid,
         goto_invalid,
         goto_invalid,
         goto_invalid,
-        goto_cornc1_s145,
+        goto_invalid,
+        goto_invalid,
+        goto_invalid,
+        goto_cornc1_s146,
         goto_invalid,
         goto_invalid,
         goto_invalid,
@@ -3349,10 +3380,10 @@ pub(crate) static PARSER_DEFINITION: PgsParserDefinition = PgsParserDefinition {
             None,
         ],
         [
+            Some((TK::CLOSE_PAREN, true)),
+            Some((TK::OPEN_CURLY, true)),
+            Some((TK::COLON, true)),
             Some((TK::IDENTIFIER, false)),
-            None,
-            None,
-            None,
             None,
             None,
             None,
@@ -3466,6 +3497,19 @@ pub(crate) static PARSER_DEFINITION: PgsParserDefinition = PgsParserDefinition {
             None,
         ],
         [
+            Some((TK::CLOSE_ARROW, true)),
+            Some((TK::CLOSE_PAREN, true)),
+            Some((TK::OPEN_CURLY, true)),
+            Some((TK::COLON, true)),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
+        [
             Some((TK::AT, true)),
             Some((TK::IDENTIFIER, false)),
             None,
@@ -3518,10 +3562,10 @@ pub(crate) static PARSER_DEFINITION: PgsParserDefinition = PgsParserDefinition {
             None,
         ],
         [
+            Some((TK::CLOSE_ARROW, true)),
+            Some((TK::OPEN_CURLY, true)),
+            Some((TK::COLON, true)),
             Some((TK::IDENTIFIER, false)),
-            None,
-            None,
-            None,
             None,
             None,
             None,
@@ -5538,12 +5582,27 @@ impl<'i> LRBuilder<'i, Input, Context<'i, Input>, State, ProdKind, TokenKind> fo
                 ) {
                     (
                         _,
-                        Symbol::NonTerminal(NonTerminal::TypeName(p0)),
+                        Symbol::NonTerminal(NonTerminal::TypeNameOpt(p0)),
                         Symbol::NonTerminal(NonTerminal::LabelPropertySpec(p1)),
                         _,
                     ) => NonTerminal::NodeType(pgs_actions::node_type_c1(context, p0, p1)),
                     _ => panic!("Invalid symbol parse stack data."),
                 }
+            }
+            ProdKind::TypeNameOptP1 => {
+                let mut i = self
+                    .res_stack
+                    .split_off(self.res_stack.len() - 1usize)
+                    .into_iter();
+                match i.next().unwrap() {
+                    Symbol::NonTerminal(NonTerminal::TypeName(p0)) => {
+                        NonTerminal::TypeNameOpt(pgs_actions::type_name_opt_type_name(context, p0))
+                    }
+                    _ => panic!("Invalid symbol parse stack data."),
+                }
+            }
+            ProdKind::TypeNameOptP2 => {
+                NonTerminal::TypeNameOpt(pgs_actions::type_name_opt_empty(context))
             }
             ProdKind::EdgeTypeP1 => {
                 let mut i = self
@@ -5561,7 +5620,7 @@ impl<'i> LRBuilder<'i, Input, Context<'i, Input>, State, ProdKind, TokenKind> fo
                     (
                         Symbol::NonTerminal(NonTerminal::EndpointType(p0)),
                         _,
-                        Symbol::NonTerminal(NonTerminal::TypeName(p1)),
+                        Symbol::NonTerminal(NonTerminal::TypeNameOpt(p1)),
                         Symbol::NonTerminal(NonTerminal::LabelPropertySpec(p2)),
                         _,
                         Symbol::NonTerminal(NonTerminal::EndpointType(p3)),

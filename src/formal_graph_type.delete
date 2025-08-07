@@ -11,12 +11,14 @@ use crate::{
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FormalGraphType {
     map: HashMap<TypeName, LabelPropertySpec>,
+    blank_counter: usize,
 }
 
 impl FormalGraphType {
     pub fn new() -> Self {
         FormalGraphType {
             map: HashMap::new(),
+            blank_counter: 0,
         }
     }
 
@@ -41,6 +43,12 @@ impl FormalGraphType {
 
     pub fn add(&mut self, type_name: &str, label_property_spec: LabelPropertySpec) {
         self.map.insert(type_name.to_string(), label_property_spec);
+    }
+
+    pub fn add_blank(&mut self, label_property_spec: LabelPropertySpec) {
+        let type_name = format!("{}", self.blank_counter);
+        self.blank_counter += 1;
+        self.add(&type_name, label_property_spec);
     }
 
     pub fn get(&self, type_name: &str) -> Option<&LabelPropertySpec> {

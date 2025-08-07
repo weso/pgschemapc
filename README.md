@@ -83,9 +83,9 @@ Further integration with graph databases or external datasets will require exten
 
 ## Related Resources
 
-- Railroad diagrams: [https://domel.github.io/PG-Schema-pc](https://domel.github.io/PG-Schema-pc)
+- Railroad diagrams: [https://domel.github.io/pg-schema-pc/rr-diagrams.html](https://domel.github.io/pg-schema-pc/rr-diagrams.html)
 - Citation metadata: see `CITATION.cff`
-- GitHub repository: [https://github.com/domel/PG-Schema-pc](https://github.com/domel/PG-Schema-pc)
+- GitHub repository for grammar: [https://github.com/domel/pg-schema-pc](https://github.com/domel/pg-schema-pc)
 
 ## Citing
 

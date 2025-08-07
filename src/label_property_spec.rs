@@ -2,7 +2,8 @@ use std::fmt::Display;
 
 use crate::{
     formal_base_type::FormalBaseType,
-    formal_graph_type::FormalGraphType,
+    // formal_graph_type::FormalGraphType,
+    pgs::PropertyGraphSchema,
     pgs_error::PgsError,
     property_value_spec::PropertyValueSpec,
     type_name::{Name, TypeName},
@@ -64,37 +65,34 @@ impl LabelPropertySpec {
         LabelPropertySpec::Content(Box::new(label_property_spec), property_value_spec)
     }
 
-    pub fn semantics(&self, graph_type: &FormalGraphType) -> Result<FormalBaseType, PgsError> {
+    pub fn semantics(&self, schema: &PropertyGraphSchema) -> Result<FormalBaseType, PgsError> {
         match self {
             LabelPropertySpec::Empty => Ok(FormalBaseType::type_0()),
             LabelPropertySpec::Label(label) => Ok(FormalBaseType::from_label(label.clone())),
             LabelPropertySpec::Ref(type_name) => {
-                if let Some(label_property_spec) = graph_type.get(type_name) {
-                    label_property_spec.semantics(graph_type)
-                } else {
-                    Err(PgsError::MissingType(type_name.clone()))
-                }
+                let label_property_spec = schema.get_node_semantics(type_name)?;
+                label_property_spec.semantics(schema)
             }
             LabelPropertySpec::Optional(label_property_spec) => {
-                let base_type = label_property_spec.semantics(graph_type)?;
+                let base_type = label_property_spec.semantics(schema)?;
                 Ok(base_type.union(&FormalBaseType::type_0()))
             }
             LabelPropertySpec::And(label_property_spec, label_property_spec1) => {
-                let base_type = label_property_spec.semantics(graph_type)?;
-                let base_type1 = label_property_spec1.semantics(graph_type)?;
+                let base_type = label_property_spec.semantics(schema)?;
+                let base_type1 = label_property_spec1.semantics(schema)?;
                 Ok(base_type.combine(&base_type1))
             }
             LabelPropertySpec::Or(label_property_spec, label_property_spec1) => {
-                let base_type = label_property_spec.semantics(graph_type)?;
-                let base_type1 = label_property_spec1.semantics(graph_type)?;
+                let base_type = label_property_spec.semantics(schema)?;
+                let base_type1 = label_property_spec1.semantics(schema)?;
                 Ok(base_type.union(&base_type1))
             }
             LabelPropertySpec::Open(label_property_spec) => {
-                let base_type = label_property_spec.semantics(graph_type)?;
+                let base_type = label_property_spec.semantics(schema)?;
                 Ok(base_type.with_open())
             }
             LabelPropertySpec::Content(label_property_spec, property_value_spec) => {
-                let base_type = label_property_spec.semantics(graph_type)?;
+                let base_type = label_property_spec.semantics(schema)?;
                 let property_value_semantics = property_value_spec.semantics()?;
                 let result = base_type.combine(&property_value_semantics);
                 Ok(result)
@@ -134,17 +132,21 @@ mod tests {
 
     #[test]
     fn test_semantics_basic_record() {
-        let mut graph = FormalGraphType::new();
+        let mut graph = PropertyGraphSchema::new();
         let person_label = LabelPropertySpec::Label("Person".to_string());
         let name = PropertyValue::property(Key::new("name"), TypeSpec::string(Card::One));
         let age = PropertyValue::property(Key::new("age"), TypeSpec::integer(Card::One));
         let person_content = PropertyValue::each_of(name, age);
-        graph.add(
+        graph.add_node_spec(
             "PersonType",
             LabelPropertySpec::content(person_label, PropertyValueSpec::closed(person_content)),
         );
 
-        let semantics = graph.get("PersonType").unwrap().semantics(&graph).unwrap();
+        let semantics = graph
+            .get_node_semantics("PersonType")
+            .unwrap()
+            .semantics(&graph)
+            .unwrap();
         let expected = FormalBaseType::new().with_label("Person").with_record_type(
             RecordType::new()
                 .with_key_value("age", ValueType::integer(Card::One))

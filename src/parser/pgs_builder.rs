@@ -4,7 +4,6 @@ use rustemo::Parser;
 use crate::{
     boolean_expr::BooleanExpr,
     card::{self, Card as PGCard, Max as PGMax},
-    formal_graph_type::FormalGraphType,
     key::Key,
     label_property_spec::LabelPropertySpec as PGLabelPropertySpec,
     parser::{
@@ -15,6 +14,7 @@ use crate::{
             TypeSpec,
         },
     },
+    pgs::PropertyGraphSchema,
     pgs_error::PgsError,
     property_value_spec::{
         PropertyValue as PGPropertyValue, PropertyValueSpec as PGPropertyValueSpec,
@@ -30,13 +30,13 @@ impl PgsBuilder {
     pub fn new() -> Self {
         PgsBuilder {}
     }
-    pub fn parse_pgs(&self, input: &str) -> Result<FormalGraphType, PgsError> {
+    pub fn parse_pgs(&self, input: &str) -> Result<PropertyGraphSchema, PgsError> {
         let pgs_content = PgsParser::new()
             .parse(input)
             .map_err(|e| PgsError::ParserError {
                 error: e.to_string(),
             })?;
-        let mut schema = FormalGraphType::new();
+        let mut schema = PropertyGraphSchema::new();
         get_create_types(pgs_content, &mut schema)?;
         Ok(schema)
     }
@@ -44,16 +44,34 @@ impl PgsBuilder {
 
 fn get_create_types(
     create_types: Vec<CreateType>,
-    schema: &mut FormalGraphType,
+    schema: &mut PropertyGraphSchema,
 ) -> Result<(), PgsError> {
     for create_type in create_types {
         match create_type {
             CreateType::CreateNodeType(node_type) => {
-                let type_name = node_type.type_name;
                 let label_property_spec = get_label_property_spec(node_type.label_property_spec)?;
-                schema.add(type_name.as_str(), label_property_spec);
+                if let Some(type_name) = node_type.type_name_opt {
+                    let _ = schema.add_node_spec(type_name.as_str(), label_property_spec)?;
+                } else {
+                    let _ = schema.add_blank_node_spec(label_property_spec)?;
+                }
             }
-            CreateType::CreateEdgeType(_edge_type) => todo!(),
+            CreateType::CreateEdgeType(edge_type) => {
+                let source_spec = get_label_property_spec(edge_type.source)?;
+                let target_spec = get_label_property_spec(edge_type.target)?;
+                let label_property_spec = get_label_property_spec(edge_type.label_property_spec)?;
+                if let Some(type_name) = edge_type.type_name_opt {
+                    let _ = schema.add_edge_spec(
+                        type_name.as_str(),
+                        source_spec,
+                        target_spec,
+                        label_property_spec,
+                    )?;
+                } else {
+                    let _ =
+                        schema.add_blank_edge_spec(source_spec, label_property_spec, target_spec);
+                }
+            }
             CreateType::CreateGraphType(_) => todo!(),
         }
     }

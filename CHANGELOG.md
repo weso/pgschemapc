@@ -4,6 +4,24 @@ This ChangeLog tries to follow the Keep a ChangeLog guidelines](https://keepacha
 
 ## [Unreleased]
 
+### Added
+- Support for edges in property graphs and property graph schemas
+- Added edge test
+
+### Fixed
+### Changed
+### Removed
+
+## v0.1.5
+
+### Added
+- Support for edges in property graphs and property graph schemas
+- Added edge test
+
+### Fixed
+### Changed
+### Removed
+
 ## v0.1.4 
 
 ### Added

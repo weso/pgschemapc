@@ -59,9 +59,9 @@ mod tests {
 
     use crate::{
         card::Card,
-        formal_graph_type::FormalGraphType,
         key::Key,
         label_property_spec::LabelPropertySpec,
+        pgs::PropertyGraphSchema,
         property_value_spec::{PropertyValue, PropertyValueSpec, TypeSpec},
         value::Value,
     };
@@ -100,19 +100,19 @@ mod tests {
                 .with_key_value("aliases", Value::str("Ally")),
         );
 
-        let mut graph = FormalGraphType::new();
+        let mut graph = PropertyGraphSchema::new();
         let person_label = LabelPropertySpec::Label("Person".to_string());
         let name = PropertyValue::property(Key::new("name"), TypeSpec::string(Card::One));
         let age = PropertyValue::property(Key::new("age"), TypeSpec::integer(Card::One));
         let aliases =
             PropertyValue::property(Key::new("aliases"), TypeSpec::string(Card::ZeroOrMore));
         let person_content = PropertyValue::each_of(name, PropertyValue::each_of(age, aliases));
-        graph.add(
+        graph.add_node_spec(
             "PersonType",
             LabelPropertySpec::content(person_label, PropertyValueSpec::closed(person_content)),
         );
 
-        let property_value_spec = graph.get("PersonType").unwrap();
+        let property_value_spec = graph.get_node_semantics("PersonType").unwrap();
         let semantics = property_value_spec.semantics(&graph).unwrap();
         debug!("Semantics of person type: {:?}", semantics);
 
@@ -147,14 +147,14 @@ mod tests {
                 .with_key_value("age", Value::str("other")),
         );
 
-        let mut graph = FormalGraphType::new();
+        let mut graph = PropertyGraphSchema::new();
         let person_label = LabelPropertySpec::Label("Person".to_string());
         let name = PropertyValue::property(Key::new("name"), TypeSpec::string(Card::One));
         let age = PropertyValue::property(Key::new("age"), TypeSpec::integer(Card::One));
         let aliases =
             PropertyValue::property(Key::new("aliases"), TypeSpec::string(Card::ZeroOrMore));
         let person_content = PropertyValue::each_of(name, PropertyValue::each_of(age, aliases));
-        graph.add(
+        graph.add_node_spec(
             "PersonType",
             LabelPropertySpec::content(person_label, PropertyValueSpec::closed(person_content)),
         );
@@ -180,14 +180,14 @@ mod tests {
                 .with_key_value("aliases", Value::str("Bobby")),
         );
 
-        let mut graph = FormalGraphType::new();
+        let mut graph = PropertyGraphSchema::new();
         let person_label = LabelPropertySpec::Label("Person".to_string());
         let name = PropertyValue::property(Key::new("name"), TypeSpec::string(Card::One));
         let age = PropertyValue::optional_property(Key::new("age"), TypeSpec::integer(Card::One));
         let aliases =
             PropertyValue::property(Key::new("aliases"), TypeSpec::string(Card::ZeroOrMore));
         let person_content = PropertyValue::each_of(name, PropertyValue::each_of(age, aliases));
-        graph.add(
+        graph.add_node_spec(
             "PersonType",
             LabelPropertySpec::content(person_label, PropertyValueSpec::closed(person_content)),
         );
@@ -240,7 +240,8 @@ mod tests {
             PropertyValue::one_of(name, PropertyValue::each_of(first_name, last_name)),
             PropertyValue::each_of(age, aliases),
         );
-        let graph = FormalGraphType::new().with_type_name(
+        let mut graph = PropertyGraphSchema::new();
+        graph.add_node_spec(
             "PersonType",
             LabelPropertySpec::content(person_label, PropertyValueSpec::closed(person_content)),
         );

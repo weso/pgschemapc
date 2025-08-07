@@ -63,38 +63,45 @@ pub fn create_graph_type_graph_type(_ctx: &Ctx, graph_type: GraphType) -> Create
 }
 #[derive(Debug, Clone)]
 pub struct NodeType {
-    pub type_name: TypeName,
+    pub type_name_opt: TypeNameOpt,
     pub label_property_spec: LabelPropertySpec,
 }
 pub fn node_type_c1(
     _ctx: &Ctx,
-    type_name: TypeName,
+    type_name_opt: TypeNameOpt,
     label_property_spec: LabelPropertySpec,
 ) -> NodeType {
     NodeType {
-        type_name,
+        type_name_opt,
         label_property_spec,
     }
 }
+pub type TypeNameOpt = Option<TypeName>;
+pub fn type_name_opt_type_name(_ctx: &Ctx, type_name: TypeName) -> TypeNameOpt {
+    Some(type_name)
+}
+pub fn type_name_opt_empty(_ctx: &Ctx) -> TypeNameOpt {
+    None
+}
 #[derive(Debug, Clone)]
 pub struct EdgeType {
-    pub endpoint_type_1: EndpointType,
-    pub type_name: TypeName,
+    pub source: EndpointType,
+    pub type_name_opt: TypeNameOpt,
     pub label_property_spec: LabelPropertySpec,
-    pub endpoint_type_6: EndpointType,
+    pub target: EndpointType,
 }
 pub fn edge_type_c1(
     _ctx: &Ctx,
-    endpoint_type_1: EndpointType,
-    type_name: TypeName,
+    source: EndpointType,
+    type_name_opt: TypeNameOpt,
     label_property_spec: LabelPropertySpec,
-    endpoint_type_6: EndpointType,
+    target: EndpointType,
 ) -> EdgeType {
     EdgeType {
-        endpoint_type_1,
-        type_name,
+        source,
+        type_name_opt,
         label_property_spec,
-        endpoint_type_6,
+        target,
     }
 }
 pub type GraphType = TypeName;

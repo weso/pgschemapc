@@ -4,9 +4,9 @@ use either::Either::{Left, Right};
 
 use crate::{
     evidence::Evidence,
-    formal_graph_type::FormalGraphType,
-    // parser::map_builder::MapBuilder,
+    // formal_graph_type::FormalGraphType,
     pg::PropertyGraph,
+    pgs::PropertyGraphSchema,
     pgs_error::PgsError,
     validation_result::{ResultAssociation, ValidationResult},
 };
@@ -47,20 +47,22 @@ impl TypeMap {
 
     pub fn validate(
         &self,
-        schema: &FormalGraphType,
+        schema: &PropertyGraphSchema,
         graph: &PropertyGraph,
     ) -> Result<ValidationResult, PgsError> {
         let mut result = ValidationResult::new();
         for association in &self.associations {
             let node_id = association.node_id();
             let type_name = association.type_name();
-            let node =
-                graph
-                    .get_node_by_label(node_id)
-                    .map_err(|_| PgsError::MissingNodeLabel {
-                        label: node_id.to_string(),
-                    })?;
-            let conforms_result = schema.conforms_node(&type_name, node);
+            let either_node_edge = graph.get_node_edge_by_label(node_id).map_err(|_| {
+                PgsError::MissingNodeEdgeLabel {
+                    label: node_id.to_string(),
+                }
+            })?;
+            let conforms_result = match either_node_edge {
+                Left(node) => schema.conforms_node(&type_name, node),
+                Right(edge) => schema.conforms_edge(&type_name, edge),
+            };
             // TODO: Handle when should_conform is false
             result.add_association(ResultAssociation {
                 node_id: node_id.clone(),
