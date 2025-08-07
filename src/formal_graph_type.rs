@@ -1,10 +1,11 @@
-use std::{collections::HashMap, fmt::Display};
+use std::{collections::HashMap, fmt::Display, path::Path};
 
 use either::Either;
 
+// use crate::parser::pgs_builder::PgsBuilder;
 use crate::{
     edge::Edge, evidence::Evidence, label_property_spec::LabelPropertySpec, node::Node,
-    pgs_error::PgsError, record::Record, type_name::TypeName,
+    pgs_error::PgsError, type_name::TypeName,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -18,6 +19,16 @@ impl FormalGraphType {
             map: HashMap::new(),
         }
     }
+
+    /*  TODO: It gives an error because PgsBuilder is not in scope
+       pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self, PgsError> {
+        let content =
+            std::fs::read_to_string(&path).map_err(|e| PgsError::PGSchemaFileReadError {
+                path: path.as_ref().to_str().unwrap().to_string(),
+                error: e.to_string(),
+            })?;
+        PgsBuilder::new().parse_pgs(content.as_str())
+    } */
 
     pub fn with_type_name(
         mut self,

@@ -10,6 +10,9 @@ pub enum PgsError {
     #[error("Not found type: {0}")]
     MissingType(TypeName),
 
+    #[error("Invalid regex pattern /{pattern}/: {error}")]
+    InvalidRegex { pattern: String, error: String },
+
     #[error("Not found node with label: {label}")]
     MissingNodeLabel { label: String },
 
@@ -46,6 +49,15 @@ pub enum PgsError {
         type_labels: String,
     },
 
+    #[error("Error reading type map from file: {path}: {error}")]
+    TypeMapFileReadError { path: String, error: String },
+
+    #[error("Error reading property graph from file: {path}: {error}")]
+    PGFileReadError { path: String, error: String },
+
+    #[error("Error reading property graph schema from file: {path}: {error}")]
+    PGSchemaFileReadError { path: String, error: String },
+
     #[error(
         "Record does not conform to type content:\n Record:\n{record}\n Types:\n{type_content}"
     )]
@@ -63,4 +75,7 @@ pub enum PgsError {
 
     #[error("Condition ({condition}) for value: {value}")]
     ConditionFailed { condition: String, value: String },
+
+    #[error("Missing association: node {node}, type {type_name}")]
+    MissingAssociation { node: String, type_name: String },
 }

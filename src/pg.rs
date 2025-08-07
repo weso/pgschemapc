@@ -1,6 +1,7 @@
 use std::{
     collections::{HashMap, HashSet},
     fmt::Display,
+    path::Path,
 };
 
 use crate::{
@@ -31,6 +32,16 @@ impl PropertyGraph {
             edge_id_counter: 0,
         }
     }
+
+    /* TODO: It gives an error because PgBuilder is not in scope
+    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self, PgsError> {
+        let content =
+            std::fs::read_to_string(&path).map_err(|e| PgsError::TypeMapFileReadError {
+                path: path.as_ref().to_str().unwrap().to_string(),
+                error: e.to_string(),
+            })?;
+        PgBuilder::new().parse_pg(content.as_str())
+    }*/
 
     pub fn get_node_by_label(&self, label: &str) -> Result<&Node, PgsError> {
         let id = self

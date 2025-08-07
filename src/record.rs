@@ -52,7 +52,7 @@ impl Record {
             }
         }
         for (key2, values2) in &other.map {
-            if let Some(_) = self.get(key2) {
+            if self.get(key2).is_some() {
                 continue; // Already handled in the first loop
             }
             combined.insert_values(key2.clone(), values2.clone());
@@ -71,7 +71,7 @@ impl Record {
             }
         }
         for (key2, values2) in &other.map {
-            if let Some(_) = self.get(key2) {
+            if self.get(key2).is_some() {
                 continue; // Already handled in the first loop
             }
             result.insert_values(key2.clone(), values2.clone());

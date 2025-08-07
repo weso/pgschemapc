@@ -3,7 +3,7 @@ Map:
     ;
 
 Association:
-    NodeId SEMICOLON TypeName ;
+    NodeId SEMICOLON NOT? TypeName ;
 
 NodeId:
     IDENTIFIER ;
@@ -44,3 +44,6 @@ OPENBRACKET:
 
 CLOSEBRACKET:
     "]" ;
+
+NOT:
+    "!" ;

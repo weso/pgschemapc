@@ -49,11 +49,12 @@ impl Display for ValidationResult {
         Ok(())
     }
 }
+
 impl Display for ResultAssociation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{}:{}: {}\n Details: {})",
+            "{}:{}: {} {})",
             self.node_id,
             self.type_name,
             self.conforms,
@@ -63,7 +64,7 @@ impl Display for ResultAssociation {
 }
 
 fn show_details(details: &Either<Vec<PgsError>, Vec<Evidence>>) -> String {
-    match details {
+    let details_str = match details {
         Either::Left(errors) => errors
             .iter()
             .map(|e| e.to_string())
@@ -74,5 +75,6 @@ fn show_details(details: &Either<Vec<PgsError>, Vec<Evidence>>) -> String {
             .map(|e| e.to_string())
             .collect::<Vec<_>>()
             .join("\n   "),
-    }
+    };
+    format!(" Details:   {}", details_str)
 }

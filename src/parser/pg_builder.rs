@@ -58,27 +58,6 @@ fn get_declaration(decl: Declaration, pg: &mut PropertyGraph) -> Result<(), PgsE
     Ok(()) */
 }
 
-/*fn get_node_or_edge(
-    node_edge: NodeEdge,
-) -> Result<
-    Either<
-        (HashSet<LabelName>, Record),                 // Node
-        (String, HashSet<LabelName>, Record, String), // Edge
-    >,
-    PgsError,
-> {
-    match node_edge {
-        NodeEdge::Node(labels_record) => {
-            let (labels, record) = get_labels_record(labels_record)?;
-            Ok(Either::Left((labels, record)))
-        }
-        NodeEdge::Edge(edge) => {
-            let (source, labels, record, target) = get_edge(edge)?;
-            Ok(Either::Right((source, labels, record, target)))
-        }
-    }
-} */
-
 fn get_edge(edge: Edge, pg: &mut PropertyGraph) -> Result<(), PgsError> {
     let id = get_id(edge.id)?;
     let source = get_id(edge.source)?;
@@ -159,7 +138,10 @@ fn get_values(values: Values) -> Result<HashSet<Value>, PgsError> {
 
 fn get_value(value: SingleValue) -> Result<Value, PgsError> {
     match value {
-        SingleValue::StringValue(s) => Ok(Value::str(s.as_str())),
+        SingleValue::StringValue(s) => {
+            let cleaned = remove_quotes(s.as_str());
+            Ok(Value::str(cleaned))
+        }
         SingleValue::NumberValue(str_number_) => {
             let number = str_number_.parse::<i32>().map_err(|_| {
                 PgsError::InvalidNumber(format!("Invalid number value: {}", str_number_))
@@ -167,4 +149,13 @@ fn get_value(value: SingleValue) -> Result<Value, PgsError> {
             Ok(Value::int(number))
         }
     }
+}
+
+// This function has been obtained from:
+// https://stackoverflow.com/questions/65976432/how-to-remove-first-and-last-character-of-a-string-in-rust
+fn remove_quotes(s: &str) -> &str {
+    let mut chars = s.chars();
+    chars.next();
+    chars.next_back();
+    chars.as_str()
 }

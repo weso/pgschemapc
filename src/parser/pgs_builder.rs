@@ -305,13 +305,19 @@ fn get_cond(cond: Cond) -> Result<BooleanExpr, PgsError> {
             let value = get_value(single_value)?;
             Ok(BooleanExpr::Equals(value))
         }
-        Cond::Regex(pattern) => Ok(BooleanExpr::Regex(pattern)),
+        Cond::Regex(pattern) => {
+            let cleaned = remove_quotes(pattern.as_str());
+            Ok(BooleanExpr::Regex(cleaned.to_string()))
+        }
     }
 }
 
 fn get_value(value: SingleValue) -> Result<Value, PgsError> {
     match value {
-        SingleValue::StringValue(s) => Ok(Value::str(s.as_str())),
+        SingleValue::StringValue(s) => {
+            let cleaned = remove_quotes(s.as_str());
+            Ok(Value::str(cleaned))
+        }
         SingleValue::NumberValue(str_number_) => {
             let number = str_number_.parse::<i32>().map_err(|_| {
                 PgsError::InvalidNumber(format!("Invalid number value: {}", str_number_))
@@ -319,4 +325,13 @@ fn get_value(value: SingleValue) -> Result<Value, PgsError> {
             Ok(Value::int(number))
         }
     }
+}
+
+// This function has been obtained from:
+// https://stackoverflow.com/questions/65976432/how-to-remove-first-and-last-character-of-a-string-in-rust
+fn remove_quotes(s: &str) -> &str {
+    let mut chars = s.chars();
+    chars.next();
+    chars.next_back();
+    chars.as_str()
 }

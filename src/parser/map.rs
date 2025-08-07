@@ -18,10 +18,10 @@ use rustemo::{LRContext, LRParser};
 use std::fmt::Debug;
 use std::hash::Hash;
 pub type Input = str;
-const STATE_COUNT: usize = 30usize;
+const STATE_COUNT: usize = 32usize;
 const MAX_RECOGNIZERS: usize = 6usize;
 #[allow(dead_code)]
-const TERMINAL_COUNT: usize = 12usize;
+const TERMINAL_COUNT: usize = 13usize;
 #[allow(clippy::upper_case_acronyms)]
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum TokenKind {
@@ -38,6 +38,7 @@ pub enum TokenKind {
     SEMICOLON,
     OPENBRACKET,
     CLOSEBRACKET,
+    NOT,
 }
 use TokenKind as TK;
 impl From<TokenKind> for usize {
@@ -52,6 +53,8 @@ pub enum ProdKind {
     Association1P1,
     Association1P2,
     AssociationP1,
+    NOTOptP1,
+    NOTOptP2,
     NodeIdP1,
     TypeNameP1,
     LayoutP1,
@@ -79,7 +82,9 @@ impl std::fmt::Debug for ProdKind {
             ProdKind::MapP1 => "Map: Association1",
             ProdKind::Association1P1 => "Association1: Association1 COMMA Association",
             ProdKind::Association1P2 => "Association1: Association",
-            ProdKind::AssociationP1 => "Association: NodeId SEMICOLON TypeName",
+            ProdKind::AssociationP1 => "Association: NodeId SEMICOLON NOTOpt TypeName",
+            ProdKind::NOTOptP1 => "NOTOpt: NOT",
+            ProdKind::NOTOptP2 => "NOTOpt: ",
             ProdKind::NodeIdP1 => "NodeId: IDENTIFIER",
             ProdKind::TypeNameP1 => "TypeName: IDENTIFIER",
             ProdKind::LayoutP1 => "Layout: LayoutItem0",
@@ -113,6 +118,7 @@ pub enum NonTermKind {
     Map,
     Association1,
     Association,
+    NOTOpt,
     NodeId,
     TypeName,
     Layout,
@@ -132,6 +138,8 @@ impl From<ProdKind> for NonTermKind {
             ProdKind::Association1P1 => NonTermKind::Association1,
             ProdKind::Association1P2 => NonTermKind::Association1,
             ProdKind::AssociationP1 => NonTermKind::Association,
+            ProdKind::NOTOptP1 => NonTermKind::NOTOpt,
+            ProdKind::NOTOptP2 => NonTermKind::NOTOpt,
             ProdKind::NodeIdP1 => NonTermKind::NodeId,
             ProdKind::TypeNameP1 => NonTermKind::TypeName,
             ProdKind::LayoutP1 => NonTermKind::Layout,
@@ -167,31 +175,33 @@ pub enum State {
     COMMAS6,
     SEMICOLONS7,
     AssociationS8,
-    IDENTIFIERS9,
-    TypeNameS10,
-    AUGLS11,
-    WSS12,
-    CommentLineS13,
-    START_COMMENTS14,
-    LayoutS15,
-    LayoutItem1S16,
-    LayoutItem0S17,
-    LayoutItemS18,
-    CommentS19,
-    WSS20,
-    NotCommentS21,
-    CommentS22,
-    CorncsS23,
-    Cornc1S24,
-    Cornc0S25,
-    CorncS26,
-    LayoutItemS27,
-    END_COMMENTS28,
-    CorncS29,
+    NOTS9,
+    NOTOptS10,
+    IDENTIFIERS11,
+    TypeNameS12,
+    AUGLS13,
+    WSS14,
+    CommentLineS15,
+    START_COMMENTS16,
+    LayoutS17,
+    LayoutItem1S18,
+    LayoutItem0S19,
+    LayoutItemS20,
+    CommentS21,
+    WSS22,
+    NotCommentS23,
+    CommentS24,
+    CorncsS25,
+    Cornc1S26,
+    Cornc0S27,
+    CorncS28,
+    LayoutItemS29,
+    END_COMMENTS30,
+    CorncS31,
 }
 impl StateT for State {
     fn default_layout() -> Option<Self> {
-        Some(State::AUGLS11)
+        Some(State::AUGLS13)
     }
 }
 impl From<State> for usize {
@@ -211,27 +221,29 @@ impl std::fmt::Debug for State {
             State::COMMAS6 => "6:COMMA",
             State::SEMICOLONS7 => "7:SEMICOLON",
             State::AssociationS8 => "8:Association",
-            State::IDENTIFIERS9 => "9:IDENTIFIER",
-            State::TypeNameS10 => "10:TypeName",
-            State::AUGLS11 => "11:AUGL",
-            State::WSS12 => "12:WS",
-            State::CommentLineS13 => "13:CommentLine",
-            State::START_COMMENTS14 => "14:START_COMMENT",
-            State::LayoutS15 => "15:Layout",
-            State::LayoutItem1S16 => "16:LayoutItem1",
-            State::LayoutItem0S17 => "17:LayoutItem0",
-            State::LayoutItemS18 => "18:LayoutItem",
-            State::CommentS19 => "19:Comment",
-            State::WSS20 => "20:WS",
-            State::NotCommentS21 => "21:NotComment",
-            State::CommentS22 => "22:Comment",
-            State::CorncsS23 => "23:Corncs",
-            State::Cornc1S24 => "24:Cornc1",
-            State::Cornc0S25 => "25:Cornc0",
-            State::CorncS26 => "26:Cornc",
-            State::LayoutItemS27 => "27:LayoutItem",
-            State::END_COMMENTS28 => "28:END_COMMENT",
-            State::CorncS29 => "29:Cornc",
+            State::NOTS9 => "9:NOT",
+            State::NOTOptS10 => "10:NOTOpt",
+            State::IDENTIFIERS11 => "11:IDENTIFIER",
+            State::TypeNameS12 => "12:TypeName",
+            State::AUGLS13 => "13:AUGL",
+            State::WSS14 => "14:WS",
+            State::CommentLineS15 => "15:CommentLine",
+            State::START_COMMENTS16 => "16:START_COMMENT",
+            State::LayoutS17 => "17:Layout",
+            State::LayoutItem1S18 => "18:LayoutItem1",
+            State::LayoutItem0S19 => "19:LayoutItem0",
+            State::LayoutItemS20 => "20:LayoutItem",
+            State::CommentS21 => "21:Comment",
+            State::WSS22 => "22:WS",
+            State::NotCommentS23 => "23:NotComment",
+            State::CommentS24 => "24:Comment",
+            State::CorncsS25 => "25:Corncs",
+            State::Cornc1S26 => "26:Cornc1",
+            State::Cornc0S27 => "27:Cornc0",
+            State::CorncS28 => "28:Cornc",
+            State::LayoutItemS29 => "29:LayoutItem",
+            State::END_COMMENTS30 => "30:END_COMMENT",
+            State::CorncS31 => "31:Cornc",
         };
         write!(f, "{name}")
     }
@@ -247,12 +259,14 @@ pub enum Terminal {
     IDENTIFIER(map_actions::IDENTIFIER),
     COMMA,
     SEMICOLON,
+    NOT,
 }
 #[derive(Debug)]
 pub enum NonTerminal {
     Map(map_actions::Map),
     Association1(map_actions::Association1),
     Association(map_actions::Association),
+    NOTOpt(map_actions::NOTOpt),
     NodeId(map_actions::NodeId),
     TypeName(map_actions::TypeName),
 }
@@ -308,7 +322,8 @@ fn action_comma_s6(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
 }
 fn action_semicolon_s7(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::IDENTIFIER => Vec::from(&[Shift(State::IDENTIFIERS9)]),
+        TK::IDENTIFIER => Vec::from(&[Reduce(PK::NOTOptP2, 0usize)]),
+        TK::NOT => Vec::from(&[Shift(State::NOTS9)]),
         _ => vec![],
     }
 }
@@ -319,30 +334,42 @@ fn action_association_s8(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> 
         _ => vec![],
     }
 }
-fn action_identifier_s9(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_not_s9(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::IDENTIFIER => Vec::from(&[Reduce(PK::NOTOptP1, 1usize)]),
+        _ => vec![],
+    }
+}
+fn action_notopt_s10(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+    match token_kind {
+        TK::IDENTIFIER => Vec::from(&[Shift(State::IDENTIFIERS11)]),
+        _ => vec![],
+    }
+}
+fn action_identifier_s11(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::STOP => Vec::from(&[Reduce(PK::TypeNameP1, 1usize)]),
         TK::COMMA => Vec::from(&[Reduce(PK::TypeNameP1, 1usize)]),
         _ => vec![],
     }
 }
-fn action_typename_s10(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_typename_s12(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::STOP => Vec::from(&[Reduce(PK::AssociationP1, 3usize)]),
-        TK::COMMA => Vec::from(&[Reduce(PK::AssociationP1, 3usize)]),
+        TK::STOP => Vec::from(&[Reduce(PK::AssociationP1, 4usize)]),
+        TK::COMMA => Vec::from(&[Reduce(PK::AssociationP1, 4usize)]),
         _ => vec![],
     }
 }
-fn action_augl_s11(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_augl_s13(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::STOP => Vec::from(&[Reduce(PK::LayoutItem0P2, 0usize)]),
-        TK::WS => Vec::from(&[Shift(State::WSS12)]),
-        TK::CommentLine => Vec::from(&[Shift(State::CommentLineS13)]),
-        TK::START_COMMENT => Vec::from(&[Shift(State::START_COMMENTS14)]),
+        TK::WS => Vec::from(&[Shift(State::WSS14)]),
+        TK::CommentLine => Vec::from(&[Shift(State::CommentLineS15)]),
+        TK::START_COMMENT => Vec::from(&[Shift(State::START_COMMENTS16)]),
         _ => vec![],
     }
 }
-fn action_ws_s12(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_ws_s14(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::STOP => Vec::from(&[Reduce(PK::LayoutItemP1, 1usize)]),
         TK::WS => Vec::from(&[Reduce(PK::LayoutItemP1, 1usize)]),
@@ -351,7 +378,7 @@ fn action_ws_s12(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
         _ => vec![],
     }
 }
-fn action_commentline_s13(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_commentline_s15(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::STOP => Vec::from(&[Reduce(PK::CommentP2, 1usize)]),
         TK::WS => Vec::from(&[Reduce(PK::CommentP2, 1usize)]),
@@ -362,38 +389,38 @@ fn action_commentline_s13(token_kind: TokenKind) -> Vec<Action<State, ProdKind>>
         _ => vec![],
     }
 }
-fn action_start_comment_s14(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_start_comment_s16(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::WS => Vec::from(&[Shift(State::WSS20)]),
-        TK::CommentLine => Vec::from(&[Shift(State::CommentLineS13)]),
-        TK::NotComment => Vec::from(&[Shift(State::NotCommentS21)]),
-        TK::START_COMMENT => Vec::from(&[Shift(State::START_COMMENTS14)]),
+        TK::WS => Vec::from(&[Shift(State::WSS22)]),
+        TK::CommentLine => Vec::from(&[Shift(State::CommentLineS15)]),
+        TK::NotComment => Vec::from(&[Shift(State::NotCommentS23)]),
+        TK::START_COMMENT => Vec::from(&[Shift(State::START_COMMENTS16)]),
         TK::END_COMMENT => Vec::from(&[Reduce(PK::Cornc0P2, 0usize)]),
         _ => vec![],
     }
 }
-fn action_layout_s15(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_layout_s17(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::STOP => Vec::from(&[Accept]),
         _ => vec![],
     }
 }
-fn action_layoutitem1_s16(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_layoutitem1_s18(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::STOP => Vec::from(&[Reduce(PK::LayoutItem0P1, 1usize)]),
-        TK::WS => Vec::from(&[Shift(State::WSS12)]),
-        TK::CommentLine => Vec::from(&[Shift(State::CommentLineS13)]),
-        TK::START_COMMENT => Vec::from(&[Shift(State::START_COMMENTS14)]),
+        TK::WS => Vec::from(&[Shift(State::WSS14)]),
+        TK::CommentLine => Vec::from(&[Shift(State::CommentLineS15)]),
+        TK::START_COMMENT => Vec::from(&[Shift(State::START_COMMENTS16)]),
         _ => vec![],
     }
 }
-fn action_layoutitem0_s17(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_layoutitem0_s19(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::STOP => Vec::from(&[Reduce(PK::LayoutP1, 1usize)]),
         _ => vec![],
     }
 }
-fn action_layoutitem_s18(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_layoutitem_s20(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::STOP => Vec::from(&[Reduce(PK::LayoutItem1P2, 1usize)]),
         TK::WS => Vec::from(&[Reduce(PK::LayoutItem1P2, 1usize)]),
@@ -402,7 +429,7 @@ fn action_layoutitem_s18(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> 
         _ => vec![],
     }
 }
-fn action_comment_s19(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_comment_s21(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::STOP => Vec::from(&[Reduce(PK::LayoutItemP2, 1usize)]),
         TK::WS => Vec::from(&[Reduce(PK::LayoutItemP2, 1usize)]),
@@ -411,7 +438,7 @@ fn action_comment_s19(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
         _ => vec![],
     }
 }
-fn action_ws_s20(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_ws_s22(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::WS => Vec::from(&[Reduce(PK::CorncP3, 1usize)]),
         TK::CommentLine => Vec::from(&[Reduce(PK::CorncP3, 1usize)]),
@@ -421,7 +448,7 @@ fn action_ws_s20(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
         _ => vec![],
     }
 }
-fn action_notcomment_s21(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_notcomment_s23(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::WS => Vec::from(&[Reduce(PK::CorncP2, 1usize)]),
         TK::CommentLine => Vec::from(&[Reduce(PK::CorncP2, 1usize)]),
@@ -431,7 +458,7 @@ fn action_notcomment_s21(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> 
         _ => vec![],
     }
 }
-fn action_comment_s22(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_comment_s24(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::WS => Vec::from(&[Reduce(PK::CorncP1, 1usize)]),
         TK::CommentLine => Vec::from(&[Reduce(PK::CorncP1, 1usize)]),
@@ -441,29 +468,29 @@ fn action_comment_s22(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
         _ => vec![],
     }
 }
-fn action_corncs_s23(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_corncs_s25(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::END_COMMENT => Vec::from(&[Shift(State::END_COMMENTS28)]),
+        TK::END_COMMENT => Vec::from(&[Shift(State::END_COMMENTS30)]),
         _ => vec![],
     }
 }
-fn action_cornc1_s24(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_cornc1_s26(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
-        TK::WS => Vec::from(&[Shift(State::WSS20)]),
-        TK::CommentLine => Vec::from(&[Shift(State::CommentLineS13)]),
-        TK::NotComment => Vec::from(&[Shift(State::NotCommentS21)]),
-        TK::START_COMMENT => Vec::from(&[Shift(State::START_COMMENTS14)]),
+        TK::WS => Vec::from(&[Shift(State::WSS22)]),
+        TK::CommentLine => Vec::from(&[Shift(State::CommentLineS15)]),
+        TK::NotComment => Vec::from(&[Shift(State::NotCommentS23)]),
+        TK::START_COMMENT => Vec::from(&[Shift(State::START_COMMENTS16)]),
         TK::END_COMMENT => Vec::from(&[Reduce(PK::Cornc0P1, 1usize)]),
         _ => vec![],
     }
 }
-fn action_cornc0_s25(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_cornc0_s27(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::END_COMMENT => Vec::from(&[Reduce(PK::CorncsP1, 1usize)]),
         _ => vec![],
     }
 }
-fn action_cornc_s26(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_cornc_s28(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::WS => Vec::from(&[Reduce(PK::Cornc1P2, 1usize)]),
         TK::CommentLine => Vec::from(&[Reduce(PK::Cornc1P2, 1usize)]),
@@ -473,7 +500,7 @@ fn action_cornc_s26(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
         _ => vec![],
     }
 }
-fn action_layoutitem_s27(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_layoutitem_s29(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::STOP => Vec::from(&[Reduce(PK::LayoutItem1P1, 2usize)]),
         TK::WS => Vec::from(&[Reduce(PK::LayoutItem1P1, 2usize)]),
@@ -482,7 +509,7 @@ fn action_layoutitem_s27(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> 
         _ => vec![],
     }
 }
-fn action_end_comment_s28(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_end_comment_s30(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::STOP => Vec::from(&[Reduce(PK::CommentP1, 3usize)]),
         TK::WS => Vec::from(&[Reduce(PK::CommentP1, 3usize)]),
@@ -493,7 +520,7 @@ fn action_end_comment_s28(token_kind: TokenKind) -> Vec<Action<State, ProdKind>>
         _ => vec![],
     }
 }
-fn action_cornc_s29(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
+fn action_cornc_s31(token_kind: TokenKind) -> Vec<Action<State, ProdKind>> {
     match token_kind {
         TK::WS => Vec::from(&[Reduce(PK::Cornc1P1, 2usize)]),
         TK::CommentLine => Vec::from(&[Reduce(PK::Cornc1P1, 2usize)]),
@@ -531,7 +558,7 @@ fn goto_comma_s6(nonterm_kind: NonTermKind) -> State {
 }
 fn goto_semicolon_s7(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
-        NonTermKind::TypeName => State::TypeNameS10,
+        NonTermKind::NOTOpt => State::NOTOptS10,
         _ => {
             panic!(
                 "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
@@ -540,56 +567,67 @@ fn goto_semicolon_s7(nonterm_kind: NonTermKind) -> State {
         }
     }
 }
-fn goto_augl_s11(nonterm_kind: NonTermKind) -> State {
+fn goto_notopt_s10(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
-        NonTermKind::Layout => State::LayoutS15,
-        NonTermKind::LayoutItem1 => State::LayoutItem1S16,
-        NonTermKind::LayoutItem0 => State::LayoutItem0S17,
-        NonTermKind::LayoutItem => State::LayoutItemS18,
-        NonTermKind::Comment => State::CommentS19,
+        NonTermKind::TypeName => State::TypeNameS12,
         _ => {
             panic!(
                 "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
-                State::AUGLS11
+                State::NOTOptS10
             )
         }
     }
 }
-fn goto_start_comment_s14(nonterm_kind: NonTermKind) -> State {
+fn goto_augl_s13(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
-        NonTermKind::Comment => State::CommentS22,
-        NonTermKind::Corncs => State::CorncsS23,
-        NonTermKind::Cornc1 => State::Cornc1S24,
-        NonTermKind::Cornc0 => State::Cornc0S25,
-        NonTermKind::Cornc => State::CorncS26,
+        NonTermKind::Layout => State::LayoutS17,
+        NonTermKind::LayoutItem1 => State::LayoutItem1S18,
+        NonTermKind::LayoutItem0 => State::LayoutItem0S19,
+        NonTermKind::LayoutItem => State::LayoutItemS20,
+        NonTermKind::Comment => State::CommentS21,
         _ => {
             panic!(
                 "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
-                State::START_COMMENTS14
+                State::AUGLS13
             )
         }
     }
 }
-fn goto_layoutitem1_s16(nonterm_kind: NonTermKind) -> State {
+fn goto_start_comment_s16(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
-        NonTermKind::LayoutItem => State::LayoutItemS27,
-        NonTermKind::Comment => State::CommentS19,
+        NonTermKind::Comment => State::CommentS24,
+        NonTermKind::Corncs => State::CorncsS25,
+        NonTermKind::Cornc1 => State::Cornc1S26,
+        NonTermKind::Cornc0 => State::Cornc0S27,
+        NonTermKind::Cornc => State::CorncS28,
         _ => {
             panic!(
                 "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
-                State::LayoutItem1S16
+                State::START_COMMENTS16
             )
         }
     }
 }
-fn goto_cornc1_s24(nonterm_kind: NonTermKind) -> State {
+fn goto_layoutitem1_s18(nonterm_kind: NonTermKind) -> State {
     match nonterm_kind {
-        NonTermKind::Comment => State::CommentS22,
-        NonTermKind::Cornc => State::CorncS29,
+        NonTermKind::LayoutItem => State::LayoutItemS29,
+        NonTermKind::Comment => State::CommentS21,
         _ => {
             panic!(
                 "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
-                State::Cornc1S24
+                State::LayoutItem1S18
+            )
+        }
+    }
+}
+fn goto_cornc1_s26(nonterm_kind: NonTermKind) -> State {
+    match nonterm_kind {
+        NonTermKind::Comment => State::CommentS24,
+        NonTermKind::Cornc => State::CorncS31,
+        _ => {
+            panic!(
+                "Invalid terminal kind ({nonterm_kind:?}) for GOTO state ({:?}).",
+                State::Cornc1S26
             )
         }
     }
@@ -608,27 +646,29 @@ pub(crate) static PARSER_DEFINITION: MapParserDefinition = MapParserDefinition {
         action_comma_s6,
         action_semicolon_s7,
         action_association_s8,
-        action_identifier_s9,
-        action_typename_s10,
-        action_augl_s11,
-        action_ws_s12,
-        action_commentline_s13,
-        action_start_comment_s14,
-        action_layout_s15,
-        action_layoutitem1_s16,
-        action_layoutitem0_s17,
-        action_layoutitem_s18,
-        action_comment_s19,
-        action_ws_s20,
-        action_notcomment_s21,
-        action_comment_s22,
-        action_corncs_s23,
-        action_cornc1_s24,
-        action_cornc0_s25,
-        action_cornc_s26,
-        action_layoutitem_s27,
-        action_end_comment_s28,
-        action_cornc_s29,
+        action_not_s9,
+        action_notopt_s10,
+        action_identifier_s11,
+        action_typename_s12,
+        action_augl_s13,
+        action_ws_s14,
+        action_commentline_s15,
+        action_start_comment_s16,
+        action_layout_s17,
+        action_layoutitem1_s18,
+        action_layoutitem0_s19,
+        action_layoutitem_s20,
+        action_comment_s21,
+        action_ws_s22,
+        action_notcomment_s23,
+        action_comment_s24,
+        action_corncs_s25,
+        action_cornc1_s26,
+        action_cornc0_s27,
+        action_cornc_s28,
+        action_layoutitem_s29,
+        action_end_comment_s30,
+        action_cornc_s31,
     ],
     gotos: [
         goto_aug_s0,
@@ -641,21 +681,23 @@ pub(crate) static PARSER_DEFINITION: MapParserDefinition = MapParserDefinition {
         goto_semicolon_s7,
         goto_invalid,
         goto_invalid,
-        goto_invalid,
-        goto_augl_s11,
-        goto_invalid,
-        goto_invalid,
-        goto_start_comment_s14,
-        goto_invalid,
-        goto_layoutitem1_s16,
+        goto_notopt_s10,
         goto_invalid,
         goto_invalid,
+        goto_augl_s13,
         goto_invalid,
         goto_invalid,
+        goto_start_comment_s16,
+        goto_invalid,
+        goto_layoutitem1_s18,
         goto_invalid,
         goto_invalid,
         goto_invalid,
-        goto_cornc1_s24,
+        goto_invalid,
+        goto_invalid,
+        goto_invalid,
+        goto_invalid,
+        goto_cornc1_s26,
         goto_invalid,
         goto_invalid,
         goto_invalid,
@@ -684,7 +726,14 @@ pub(crate) static PARSER_DEFINITION: MapParserDefinition = MapParserDefinition {
         ],
         [Some((TK::SEMICOLON, true)), None, None, None, None, None],
         [Some((TK::IDENTIFIER, false)), None, None, None, None, None],
-        [Some((TK::IDENTIFIER, false)), None, None, None, None, None],
+        [
+            Some((TK::NOT, true)),
+            Some((TK::IDENTIFIER, false)),
+            None,
+            None,
+            None,
+            None,
+        ],
         [
             Some((TK::STOP, true)),
             Some((TK::COMMA, true)),
@@ -693,6 +742,8 @@ pub(crate) static PARSER_DEFINITION: MapParserDefinition = MapParserDefinition {
             None,
             None,
         ],
+        [Some((TK::IDENTIFIER, false)), None, None, None, None, None],
+        [Some((TK::IDENTIFIER, false)), None, None, None, None, None],
         [
             Some((TK::STOP, true)),
             Some((TK::COMMA, true)),
@@ -1000,6 +1051,7 @@ pub(crate) static RECOGNIZERS: [TokenRecognizer; TERMINAL_COUNT] = [
     TokenRecognizer(TokenKind::SEMICOLON, Recognizer::StrMatch(":")),
     TokenRecognizer(TokenKind::OPENBRACKET, Recognizer::StrMatch("[")),
     TokenRecognizer(TokenKind::CLOSEBRACKET, Recognizer::StrMatch("]")),
+    TokenRecognizer(TokenKind::NOT, Recognizer::StrMatch("!")),
 ];
 pub struct DefaultBuilder {
     res_stack: Vec<Symbol>,
@@ -1027,6 +1079,7 @@ impl<'i> LRBuilder<'i, Input, Context<'i, Input>, State, ProdKind, TokenKind> fo
             TokenKind::IDENTIFIER => Terminal::IDENTIFIER(map_actions::identifier(context, token)),
             TokenKind::COMMA => Terminal::COMMA,
             TokenKind::SEMICOLON => Terminal::SEMICOLON,
+            TokenKind::NOT => Terminal::NOT,
             _ => panic!("Shift of unreachable terminal!"),
         };
         self.res_stack.push(Symbol::Terminal(val));
@@ -1074,17 +1127,31 @@ impl<'i> LRBuilder<'i, Input, Context<'i, Input>, State, ProdKind, TokenKind> fo
             ProdKind::AssociationP1 => {
                 let mut i = self
                     .res_stack
-                    .split_off(self.res_stack.len() - 3usize)
+                    .split_off(self.res_stack.len() - 4usize)
                     .into_iter();
-                match (i.next().unwrap(), i.next().unwrap(), i.next().unwrap()) {
+                match (
+                    i.next().unwrap(),
+                    i.next().unwrap(),
+                    i.next().unwrap(),
+                    i.next().unwrap(),
+                ) {
                     (
                         Symbol::NonTerminal(NonTerminal::NodeId(p0)),
                         _,
-                        Symbol::NonTerminal(NonTerminal::TypeName(p1)),
-                    ) => NonTerminal::Association(map_actions::association_c1(context, p0, p1)),
+                        Symbol::NonTerminal(NonTerminal::NOTOpt(p1)),
+                        Symbol::NonTerminal(NonTerminal::TypeName(p2)),
+                    ) => NonTerminal::Association(map_actions::association_c1(context, p0, p1, p2)),
                     _ => panic!("Invalid symbol parse stack data."),
                 }
             }
+            ProdKind::NOTOptP1 => {
+                let _ = self
+                    .res_stack
+                    .split_off(self.res_stack.len() - 1usize)
+                    .into_iter();
+                NonTerminal::NOTOpt(map_actions::notopt_not(context))
+            }
+            ProdKind::NOTOptP2 => NonTerminal::NOTOpt(map_actions::notopt_empty(context)),
             ProdKind::NodeIdP1 => {
                 let mut i = self
                     .res_stack

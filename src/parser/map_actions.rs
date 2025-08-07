@@ -29,10 +29,31 @@ pub fn association1_association(_ctx: &Ctx, association: Association) -> Associa
 #[derive(Debug, Clone)]
 pub struct Association {
     pub node_id: NodeId,
+    pub notopt: NOTOpt,
     pub type_name: TypeName,
 }
-pub fn association_c1(_ctx: &Ctx, node_id: NodeId, type_name: TypeName) -> Association {
-    Association { node_id, type_name }
+pub fn association_c1(
+    _ctx: &Ctx,
+    node_id: NodeId,
+    notopt: NOTOpt,
+    type_name: TypeName,
+) -> Association {
+    Association {
+        node_id,
+        notopt,
+        type_name,
+    }
+}
+pub type NOTOpt = Option<NotOptNoO>;
+#[derive(Debug, Clone)]
+pub enum NotOptNoO {
+    NOT,
+}
+pub fn notopt_not(_ctx: &Ctx) -> NOTOpt {
+    Some(NotOptNoO::NOT)
+}
+pub fn notopt_empty(_ctx: &Ctx) -> NOTOpt {
+    None
 }
 pub type NodeId = IDENTIFIER;
 pub fn node_id_identifier(_ctx: &Ctx, identifier: IDENTIFIER) -> NodeId {

@@ -115,3 +115,110 @@ fn get_map(path: &str) -> Result<pgschemapc::type_map::TypeMap> {
     };
     Ok(map)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn adult() {
+        test_case(
+            "tests/adult.pg",
+            "tests/adult.pgs",
+            "tests/adult.map",
+            "tests/adult.result_map",
+        );
+    }
+
+    #[test]
+    fn user() {
+        test_case(
+            "tests/user.pg",
+            "tests/user.pgs",
+            "tests/user.map",
+            "tests/user.result_map",
+        );
+    }
+
+    #[test]
+    fn course() {
+        test_case(
+            "tests/course.pg",
+            "tests/course.pgs",
+            "tests/course.map",
+            "tests/course.result_map",
+        );
+    }
+
+    #[test]
+    fn person() {
+        test_case(
+            "tests/person.pg",
+            "tests/person.pgs",
+            "tests/person.map",
+            "tests/person.result_map",
+        );
+    }
+
+    #[test]
+    fn product() {
+        test_case(
+            "tests/product.pg",
+            "tests/product.pgs",
+            "tests/product.map",
+            "tests/product.result_map",
+        );
+    }
+
+    #[test]
+    fn any() {
+        test_case(
+            "tests/any.pg",
+            "tests/any.pgs",
+            "tests/any.map",
+            "tests/any.result_map",
+        );
+    }
+
+    #[test]
+    fn simple() {
+        test_case(
+            "tests/simple.pg",
+            "tests/simple.pgs",
+            "tests/simple.map",
+            "tests/simple.result_map",
+        );
+    }
+
+    #[test]
+    fn email() {
+        // It checks regexes
+        test_case(
+            "tests/email.pg",
+            "tests/email.pgs",
+            "tests/email.map",
+            "tests/email.result_map",
+        );
+    }
+
+    fn test_case(pg_file: &str, pgs_file: &str, map_file: &str, expected_map_file: &str) {
+        let pg = get_graph(pg_file).unwrap();
+        let pgs = get_schema(pgs_file).unwrap();
+        let type_map = get_map(map_file).unwrap();
+        let expected_result = get_map(expected_map_file).unwrap();
+        let result = type_map.validate(&pgs, &pg).unwrap();
+        let comparison = expected_result.compare_with_result(&result).unwrap();
+        if comparison.is_empty() {
+            assert!(true);
+        } else {
+            panic!(
+                "Validation failed: {}",
+                comparison
+                    .iter()
+                    .map(|f| f.to_string())
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            );
+        }
+    }
+}

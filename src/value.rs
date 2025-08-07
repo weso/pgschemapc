@@ -1,8 +1,10 @@
 use std::fmt::Display;
 
+use regex::Regex;
+
 use crate::pgs_error::PgsError;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Value {
     String(String),
     Integer(i32),
@@ -80,7 +82,14 @@ impl Value {
 
     pub fn regex_match(&self, pattern: &str) -> Result<bool, PgsError> {
         match self {
-            Value::String(s) => Ok(s.contains(pattern)),
+            Value::String(s) => {
+                let regex = Regex::new(pattern).map_err(|e| PgsError::InvalidRegex {
+                    pattern: pattern.to_string(),
+                    error: e.to_string(),
+                })?;
+                let matches = regex.is_match(s);
+                Ok(matches)
+            }
             _ => Err(PgsError::TypeMismatch {
                 operation: "regex_match".into(),
                 expected: "String".into(),
@@ -107,6 +116,16 @@ impl PartialOrd for Value {
             (Value::String(s1), Value::String(s2)) => s1.partial_cmp(s2),
             (Value::Date(d1), Value::Date(d2)) => d1.partial_cmp(d2),
             _ => None,
+        }
+    }
+}
+impl Ord for Value {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        match (self, other) {
+            (Value::Integer(i1), Value::Integer(i2)) => i1.cmp(i2),
+            (Value::String(s1), Value::String(s2)) => s1.cmp(s2),
+            (Value::Date(d1), Value::Date(d2)) => d1.cmp(d2),
+            _ => std::cmp::Ordering::Equal, // Fallback for different types
         }
     }
 }
