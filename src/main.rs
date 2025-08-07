@@ -213,6 +213,17 @@ mod tests {
         );
     }
 
+    #[test]
+    fn basic() {
+        // It checks regexes
+        test_case(
+            "tests/basic.pg",
+            "tests/basic.pgs",
+            "tests/basic.map",
+            "tests/basic.result_map",
+        );
+    }
+
     fn test_case(pg_file: &str, pgs_file: &str, map_file: &str, expected_map_file: &str) {
         let pg = get_graph(pg_file).unwrap();
         let pgs = get_schema(pgs_file).unwrap();
