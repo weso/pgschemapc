@@ -3,7 +3,8 @@
 This ChangeLog tries to follow the Keep a ChangeLog guidelines](https://keepachangelog.com/).
 
 ## [Unreleased]
-
+### Fixed
+- Refactor to avoid repeating mod declarations in main.rs
 
 ## v0.1.6
 
