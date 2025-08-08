@@ -6,3 +6,4 @@ More information:
 - [github repo](https://github.com/weso/pgschemapc/)
 - [Binary releases](https://github.com/weso/pgschemapc/releases)
 - [Zenodo link](https://doi.org/10.5281/zenodo.16738598)
+- [Online grammar checker](https://damianw27.github.io/gql/): Contains an online checker for GQL and PGSchema.
