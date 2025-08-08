@@ -1,34 +1,8 @@
-mod boolean_expr;
-mod card;
-mod cli;
-mod edge;
-mod edge_id;
-mod edge_type;
-mod evidence;
-mod formal_base_type;
-mod key;
-mod label_property_spec;
-mod node;
-mod node_id;
-mod pg;
-mod pgs;
-mod pgs_error;
-mod property_value_spec;
-mod record;
-mod record_type;
-mod type_map;
-mod type_name;
-mod validation_result;
-mod value;
-mod value_type;
-
 use anyhow::*;
 use clap::Parser;
-use cli::{Cli, Command};
+use pgschemapc::cli::{Cli, Command};
 use pgschemapc::parser::{map_builder::MapBuilder, pg_builder::PgBuilder, pgs_builder::PgsBuilder};
 use std::result::Result::Ok;
-
-use crate::pgs::PropertyGraphSchema;
 
 // src/main.rs
 fn main() -> Result<()> {

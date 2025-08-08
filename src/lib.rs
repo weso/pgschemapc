@@ -1,5 +1,6 @@
 pub mod boolean_expr;
 pub mod card;
+pub mod cli;
 pub mod edge;
 pub mod edge_id;
 pub mod edge_type;
