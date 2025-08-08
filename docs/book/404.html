@@ -1,62 +1,45 @@
 <!DOCTYPE HTML>
-<html lang="{{ language }}" class="{{ default_theme }}" dir="{{ text_direction }}">
+<html lang="en" class="light" dir="ltr">
 
 <head>
     <!-- Book generated using mdBook -->
     <meta charset="UTF-8">
-    <title>{{ title }}</title>
-    {{#if is_print }}
-    <meta name="robots" content="noindex">
-    {{/if}}
-    {{#if base_url}}
-    <base href="{{ base_url }}">
-    {{/if}}
+    <title>Page not found</title>
+    <base href="/">
 
     <!-- Custom HTML head -->
-    {{> head}}
 
-    <meta name="description" content="{{ description }}">
+    <meta name="description" content="">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#ffffff">
 
-    <link rel="shortcut icon" href="{{ path_to_root }}assets/corp/favicon.png">
+    <link rel="shortcut icon" href="assets/corp/favicon.png">
 
-    <link rel="stylesheet" href="{{ path_to_root }}css/variables.css">
-    <link rel="stylesheet" href="{{ path_to_root }}css/general.css">
-    <link rel="stylesheet" href="{{ path_to_root }}css/chrome.css">
-    {{#if print_enable}}
-    <link rel="stylesheet" href="{{ path_to_root }}css/print.css" media="print">
-    {{/if}}
+    <link rel="stylesheet" href="css/variables.css">
+    <link rel="stylesheet" href="css/general.css">
+    <link rel="stylesheet" href="css/chrome.css">
+    <link rel="stylesheet" href="css/print.css" media="print">
 
     <!-- Fonts -->
-    <link rel="stylesheet" href="{{ path_to_root }}FontAwesome/css/font-awesome.css">
-    {{#if copy_fonts}}
-    <link rel="stylesheet" href="{{ path_to_root }}fonts/fonts.css">
-    {{/if}}
+    <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+    <link rel="stylesheet" href="fonts/fonts.css">
 
     <!-- Highlight.js Stylesheets -->
-    <link rel="stylesheet" href="{{ path_to_root }}highlight.css">
-    <link rel="stylesheet" href="{{ path_to_root }}tomorrow-night.css">
-    <link rel="stylesheet" href="{{ path_to_root }}ayu-highlight.css">
+    <link rel="stylesheet" href="highlight.css">
+    <link rel="stylesheet" href="tomorrow-night.css">
+    <link rel="stylesheet" href="ayu-highlight.css">
 
     <!-- Custom theme stylesheets -->
-    {{#each additional_css}}
-    <link rel="stylesheet" href="{{ ../path_to_root }}{{ this }}">
-    {{/each}}
 
     <!-- MathJax -->
-    {{#if mathjax_support}}
-    <script async
-        src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
-    {{/if}}
 </head>
 
 <body class="sidebar-visible no-js">
     <div id="body-container">
         <!-- Provide site root to javascript -->
         <script>
-            var path_to_root = "{{ path_to_root }}";
-            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "{{ preferred_dark_theme }}" : "{{ default_theme }}";
+            var path_to_root = "";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
         </script>
 
         <!-- Work around some values being stored in localStorage wrapped in quotes -->
@@ -110,7 +93,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                {{#toc}}{{/toc}}
+                <ol class="chapter"><li class="chapter-item expanded "><a href="overview.html"><strong aria-hidden="true">1.</strong> Overview</a></li><li class="chapter-item expanded "><a href="installation.html"><strong aria-hidden="true">2.</strong> Installation</a></li><li class="chapter-item expanded "><a href="getting-started.html"><strong aria-hidden="true">3.</strong> Getting started</a></li><li class="chapter-item expanded "><a href="pg.html"><strong aria-hidden="true">4.</strong> pg command</a></li><li class="chapter-item expanded "><a href="pgs.html"><strong aria-hidden="true">5.</strong> pgs command</a></li><li class="chapter-item expanded "><a href="map.html"><strong aria-hidden="true">6.</strong> map command</a></li><li class="chapter-item expanded "><a href="validate.html"><strong aria-hidden="true">7.</strong> validate command</a></li><li class="chapter-item expanded "><a href="test-suite.html"><strong aria-hidden="true">8.</strong> test-suite</a></li></ol>
             </div>
             <div style="display: none;" id="sidebar-resize-handle" class="sidebar-resize-handle">
                 <div class="sidebar-resize-indicator"></div>
@@ -141,7 +124,6 @@
 
         <div id="page-wrapper" class="page-wrapper">
             <div class="page">
-                {{> header}}
                 <div id="menu-bar-hover-placeholder"></div>
                 <div id="menu-bar" class="menu-bar sticky">
                     <div class="left-buttons">
@@ -159,13 +141,11 @@
                             <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="dark">Dark</button></li>
                         </ul>
-                        {{#if search_enabled}}
                         <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)"
                             aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S"
                             aria-controls="searchbar">
                             <i class="fa fa-search"></i>
                         </button>
-                        {{/if}}
                     </div>
 
                     <header class="menu-title">
@@ -177,15 +157,9 @@
                             aria-label="Download Zed">
                             Download
                         </a>
-                        {{#if git_repository_url}}
-                        <a href="{{git_repository_url}}" title="Git repository" aria-label="Git repository">
-                            <i id="git-repository-button" class="fa {{git_repository_icon}}"></i>
-                        </a>
-                        {{/if}}
                     </div>
                 </div>
 
-                {{#if search_enabled}}
                 <div id="search-wrapper" class="hidden">
                     <form id="searchbar-outer" class="searchbar-outer">
                         <input type="search" id="searchbar" name="searchbar" placeholder="Search this book..."
@@ -197,7 +171,6 @@
                         </ul>
                     </div>
                 </div>
-                {{/if}}
 
                 <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
                 <script>
@@ -215,64 +188,30 @@
                                 <p class="toc-title">On this page</p>
                             </nav>
                         </div>
-                        {{{ content }}}
+                        <h1 id="document-not-found-404"><a class="header" href="#document-not-found-404">Document not found (404)</a></h1>
+<p>This URL is invalid, sorry. Please use the navigation bar or search to continue.</p>
+
                     </main>
                 </div>
             </div>
         </div>
 
-        {{#if playground_line_numbers}}
-        <script>
-            window.playground_line_numbers = true;
-        </script>
-        {{/if}}
 
-        {{#if playground_copyable}}
         <script>
             window.playground_copyable = true;
         </script>
-        {{/if}}
 
-        {{#if playground_js}}
-        <script src="{{ path_to_root }}ace.js"></script>
-        <script src="{{ path_to_root }}editor.js"></script>
-        <script src="{{ path_to_root }}mode-rust.js"></script>
-        <script src="{{ path_to_root }}theme-dawn.js"></script>
-        <script src="{{ path_to_root }}theme-tomorrow_night.js"></script>
-        {{/if}}
 
-        {{#if search_js}}
-        <script src="{{ path_to_root }}elasticlunr.min.js"></script>
-        <script src="{{ path_to_root }}mark.min.js"></script>
-        <script src="{{ path_to_root }}searcher.js"></script>
-        {{/if}}
+        <script src="elasticlunr.min.js"></script>
+        <script src="mark.min.js"></script>
+        <script src="searcher.js"></script>
 
-        <script src="{{ path_to_root }}clipboard.min.js"></script>
-        <script src="{{ path_to_root }}highlight.js"></script>
-        <script src="{{ path_to_root }}book.js"></script>
+        <script src="clipboard.min.js"></script>
+        <script src="highlight.js"></script>
+        <script src="book.js"></script>
 
         <!-- Custom JS scripts -->
-        {{#each additional_js}}
-        <script src="{{ ../path_to_root }}{{this}}"></script>
-        {{/each}}
 
-        {{#if is_print}}
-        {{#if mathjax_support}}
-        <script>
-            window.addEventListener('load', function () {
-                MathJax.Hub.Register.StartupHook('End', function () {
-                    window.setTimeout(window.print, 100);
-                });
-            });
-        </script>
-        {{else}}
-        <script>
-            window.addEventListener('load', function () {
-                window.setTimeout(window.print, 100);
-            });
-        </script>
-        {{/if}}
-        {{/if}}
 
         <script>
             (function () {
