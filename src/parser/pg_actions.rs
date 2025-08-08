@@ -206,6 +206,8 @@ pub fn single_value0_empty(_ctx: &Ctx) -> SingleValue0 {
 pub enum SingleValue {
     StringValue(QUOTED_STRING),
     NumberValue(NUMBER),
+    DateValue(QUOTED_STRING),
+    BooleanValue(BOOL),
 }
 pub fn single_value_string_value(
     _ctx: &Ctx,
@@ -215,4 +217,21 @@ pub fn single_value_string_value(
 }
 pub fn single_value_number_value(_ctx: &Ctx, number: NUMBER) -> SingleValue {
     SingleValue::NumberValue(number)
+}
+pub fn single_value_date_value(_ctx: &Ctx, quoted_string: QUOTED_STRING) -> SingleValue {
+    SingleValue::DateValue(quoted_string)
+}
+pub fn single_value_boolean_value(_ctx: &Ctx, bool: BOOL) -> SingleValue {
+    SingleValue::BooleanValue(bool)
+}
+#[derive(Debug, Clone)]
+pub enum BOOL {
+    TRUE,
+    FALSE,
+}
+pub fn bool_true(_ctx: &Ctx) -> BOOL {
+    BOOL::TRUE
+}
+pub fn bool_false(_ctx: &Ctx) -> BOOL {
+    BOOL::FALSE
 }

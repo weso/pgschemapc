@@ -3,7 +3,7 @@ use rustemo::Parser;
 
 use crate::{
     boolean_expr::BooleanExpr,
-    card::{self, Card as PGCard, Max as PGMax},
+    card::{Card as PGCard, Max as PGMax},
     key::Key,
     label_property_spec::LabelPropertySpec as PGLabelPropertySpec,
     parser::{
@@ -270,6 +270,15 @@ fn get_simple_type(simple_type: SimpleType) -> Result<PGTypeSpec, PgsError> {
             let cond = get_cond(cond)?;
             Ok(PGTypeSpec::cond(ValueType::Any, cond))
         }
+        SimpleType::Bool(bool) => {
+            let card = get_card_opt(bool.card_opt)?;
+            if let Some(cond) = bool.check_opt {
+                let cond = get_cond(cond)?;
+                Ok(PGTypeSpec::cond(ValueType::bool(card), cond))
+            } else {
+                Ok(PGTypeSpec::bool(card))
+            }
+        }
     }
 }
 
@@ -342,6 +351,14 @@ fn get_value(value: SingleValue) -> Result<Value, PgsError> {
             })?;
             Ok(Value::int(number))
         }
+        SingleValue::DateValue(date) => {
+            let date_value = Value::date(remove_quotes(date.as_str()))?;
+            Ok(date_value)
+        }
+        SingleValue::BooleanValue(bool) => match bool {
+            super::pgs_actions::BOOL::TRUE => Ok(Value::true_()),
+            super::pgs_actions::BOOL::FALSE => Ok(Value::false_()),
+        },
     }
 }
 

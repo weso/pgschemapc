@@ -20,7 +20,19 @@ EdgeType:
     source=EndpointType "-[" TypeName? LabelPropertySpec "]->" target=EndpointType ;
 
 GraphType:
-    TypeName "{" "}" ;
+    TypeName GraphTypeMode? "{" GraphTypeElements? "}" ;
+
+GraphTypeImports:
+    "IMPORTS" Imports ;
+
+Imports:
+    TypeName+[COMMA] ;
+
+GraphTypeMode:
+    STRICT | LOOSE ;
+
+GraphTypeElements: 
+    TypeName | NodeType | EdgeType ;
 
 TypeName:
     IDENTIFIER ;  
@@ -74,6 +86,7 @@ MoreTypes:
 SimpleType: STRING_NAME Card? Check? {StringSpec}
     | INTEGER_NAME Card? Check? {Integer}
     | DATE_NAME Card? Check? {Date}
+    | BOOL_NAME Card? Check? {Bool}
     | ANY Check? {Any}
     | CHECK Cond {Cond}
     ;
@@ -106,16 +119,23 @@ Max:
     NUMBER | 
     "*" {Star};
 
+
+SingleValue:    
+      QUOTED_STRING {StringValue}
+    | NUMBER {NumberValue}
+    | DATE QUOTED_STRING {DateValue}
+    | BOOL {BooleanValue}
+    ;
+
+BOOL:
+    TRUE | FALSE ;
+
+// This code is to handle comments
 Layout: LayoutItem*;
 LayoutItem: WS | Comment;
 Comment: '/*' Corncs '*/' | CommentLine;
 Corncs: Cornc*;
 Cornc: Comment | NotComment | WS;
-
-SingleValue:    
-      QUOTED_STRING {StringValue}
-    | NUMBER {NumberValue}
-    ;
 
 
 terminals
@@ -191,6 +211,10 @@ QUESTION:
 INTEGER_NAME:
     "INTEGER" ;
 
+BOOL_NAME:
+    "BOOL" ;
+
+
 STRING_NAME:
     "STRING" ; 
 
@@ -248,3 +272,18 @@ NOT:
 
 ANY:
     "ANY" ;
+
+DATE:
+    "DATE" ;
+
+STRICT:
+    "STRICT" ;
+
+LOOSE:
+    "LOOSE" ;
+
+ABSTRACT:
+    "ABSTRACT" ;
+
+IMPORTS:
+    "IMPORTS" ;

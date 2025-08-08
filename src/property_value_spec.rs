@@ -169,6 +169,12 @@ impl TypeSpec {
         }
     }
 
+    pub fn bool(card: Card) -> Self {
+        TypeSpec {
+            type_def: Type::Type(ValueType::bool(card)),
+        }
+    }
+
     pub fn any() -> Self {
         TypeSpec {
             type_def: Type::Type(ValueType::Any),

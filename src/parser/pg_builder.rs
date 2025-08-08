@@ -148,6 +148,14 @@ fn get_value(value: SingleValue) -> Result<Value, PgsError> {
             })?;
             Ok(Value::int(number))
         }
+        SingleValue::DateValue(date) => {
+            let date_value = Value::date(remove_quotes(date.as_str()))?;
+            Ok(date_value)
+        }
+        SingleValue::BooleanValue(bool) => match bool {
+            super::pg_actions::BOOL::TRUE => Ok(Value::true_()),
+            super::pg_actions::BOOL::FALSE => Ok(Value::false_()),
+        },
     }
 }
 

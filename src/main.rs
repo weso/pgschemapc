@@ -224,11 +224,34 @@ mod tests {
         );
     }
 
+    #[test]
+    fn datatypes() {
+        // It checks datatypes
+        test_case(
+            "tests/datatypes.pg",
+            "tests/datatypes.pgs",
+            "tests/datatypes.map",
+            "tests/datatypes.result_map",
+        );
+    }
+
+    #[test]
+    fn employee() {
+        // It checks simple inheritance
+        test_case(
+            "tests/employee.pg",
+            "tests/employee.pgs",
+            "tests/employee.map",
+            "tests/employee.result_map",
+        );
+    }
+
     fn test_case(pg_file: &str, pgs_file: &str, map_file: &str, expected_map_file: &str) {
-        let pg = get_graph(pg_file).unwrap();
-        let pgs = get_schema(pgs_file).unwrap();
-        let type_map = get_map(map_file).unwrap();
-        let expected_result = get_map(expected_map_file).unwrap();
+        let pg = get_graph(pg_file).expect(format!("Failed to parse: {pg_file})").as_str());
+        let pgs = get_schema(pgs_file).expect(format!("Failed to parse: {pgs_file})").as_str());
+        let type_map = get_map(map_file).expect(format!("Failed to parse: {map_file})").as_str());
+        let expected_result = get_map(expected_map_file)
+            .expect(format!("Failed to parse: {expected_map_file})").as_str());
         let result = type_map.validate(&pgs, &pg).unwrap();
         let comparison = expected_result.compare_with_result(&result).unwrap();
         if comparison.is_empty() {

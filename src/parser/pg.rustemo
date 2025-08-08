@@ -39,7 +39,12 @@ ListValues: SingleValue*[COMMA] ;
 SingleValue:    
       QUOTED_STRING {StringValue}
     | NUMBER {NumberValue}
+    | DATE QUOTED_STRING {DateValue}
+    | BOOL {BooleanValue}
     ;
+
+BOOL:
+    TRUE | FALSE ;
 
 // Productions for comments  
 Layout: LayoutItem*;
@@ -148,3 +153,12 @@ START_ARROW:
 
 END_ARROW:
     "]->" ;
+
+TRUE:
+    "TRUE" ;
+
+FALSE:
+    "FALSE" ;
+
+DATE:
+    "DATE" ;

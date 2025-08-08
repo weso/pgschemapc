@@ -12,6 +12,7 @@ pub enum ValueType {
     StringType(Card),
     IntegerType(Card),
     DateType(Card),
+    BoolType(Card),
     Intersection(Box<ValueType>, Box<ValueType>),
     Union(Box<ValueType>, Box<ValueType>),
     Cond(BooleanExpr),
@@ -28,6 +29,9 @@ impl ValueType {
 
     pub fn date(card: Card) -> Self {
         ValueType::DateType(card)
+    }
+    pub fn bool(card: Card) -> Self {
+        ValueType::BoolType(card)
     }
     pub fn intersection(a: ValueType, b: ValueType) -> Self {
         ValueType::Intersection(Box::new(a), Box::new(b))
@@ -116,6 +120,15 @@ impl ValueType {
             ValueType::Any => Either::Right(vec![Evidence::Any {
                 values: format!("{:?}", values),
             }]),
+            ValueType::BoolType(card) => {
+                if !card.contains(values.len()) {
+                    return Either::Left(vec![PgsError::CardinalityMismatch {
+                        expected: card.clone(),
+                        count: values.len(),
+                    }]);
+                }
+                check_all(values, |v| v.is_bool(), "is_bool")
+            }
         }
     }
 }
@@ -152,6 +165,7 @@ impl Display for ValueType {
             ValueType::Union(a, b) => write!(f, "({} ∪ {})", a, b),
             ValueType::Cond(expr) => write!(f, "Condition({})", expr),
             ValueType::Any => write!(f, "ANY"),
+            ValueType::BoolType(card) => write!(f, "Bool({})", card),
         }
     }
 }

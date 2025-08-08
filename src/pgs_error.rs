@@ -49,6 +49,9 @@ pub enum PgsError {
     #[error("Parser error parsing property graph: {error}")]
     PGParserError { error: String },
 
+    #[error("Parser error parsing type map: {error}")]
+    MapParserError { error: String },
+
     #[error("Labels do not match: record labels {record_labels}, type labels {type_labels}")]
     LabelsDifferent {
         record_labels: String,
@@ -103,4 +106,7 @@ pub enum PgsError {
         edge: String,
         node_semantics: String,
     },
+
+    #[error("Invalid date value: {date}")]
+    InvalidDate { date: String, error: String },
 }

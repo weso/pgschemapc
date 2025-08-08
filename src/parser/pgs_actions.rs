@@ -116,9 +116,78 @@ pub fn edge_type_c1(
         target,
     }
 }
-pub type GraphType = TypeName;
-pub fn graph_type_type_name(_ctx: &Ctx, type_name: TypeName) -> GraphType {
-    type_name
+#[derive(Debug, Clone)]
+pub struct GraphType {
+    pub type_name: TypeName,
+    pub graph_type_mode_opt: GraphTypeModeOpt,
+    pub graph_type_elements_opt: GraphTypeElementsOpt,
+}
+pub fn graph_type_c1(
+    _ctx: &Ctx,
+    type_name: TypeName,
+    graph_type_mode_opt: GraphTypeModeOpt,
+    graph_type_elements_opt: GraphTypeElementsOpt,
+) -> GraphType {
+    GraphType {
+        type_name,
+        graph_type_mode_opt,
+        graph_type_elements_opt,
+    }
+}
+pub type GraphTypeModeOpt = Option<GraphTypeMode>;
+pub fn graph_type_mode_opt_graph_type_mode(
+    _ctx: &Ctx,
+    graph_type_mode: GraphTypeMode,
+) -> GraphTypeModeOpt {
+    Some(graph_type_mode)
+}
+pub fn graph_type_mode_opt_empty(_ctx: &Ctx) -> GraphTypeModeOpt {
+    None
+}
+pub type GraphTypeElementsOpt = Option<GraphTypeElements>;
+pub fn graph_type_elements_opt_graph_type_elements(
+    _ctx: &Ctx,
+    graph_type_elements: GraphTypeElements,
+) -> GraphTypeElementsOpt {
+    Some(graph_type_elements)
+}
+pub fn graph_type_elements_opt_empty(_ctx: &Ctx) -> GraphTypeElementsOpt {
+    None
+}
+#[derive(Debug, Clone)]
+pub enum GraphTypeMode {
+    STRICT,
+    LOOSE,
+}
+pub fn graph_type_mode_strict(_ctx: &Ctx) -> GraphTypeMode {
+    GraphTypeMode::STRICT
+}
+pub fn graph_type_mode_loose(_ctx: &Ctx) -> GraphTypeMode {
+    GraphTypeMode::LOOSE
+}
+#[derive(Debug, Clone)]
+pub enum GraphTypeElements {
+    TypeName(TypeName),
+    NodeType(NodeType),
+    EdgeType(EdgeType),
+}
+pub fn graph_type_elements_type_name(
+    _ctx: &Ctx,
+    type_name: TypeName,
+) -> GraphTypeElements {
+    GraphTypeElements::TypeName(type_name)
+}
+pub fn graph_type_elements_node_type(
+    _ctx: &Ctx,
+    node_type: NodeType,
+) -> GraphTypeElements {
+    GraphTypeElements::NodeType(node_type)
+}
+pub fn graph_type_elements_edge_type(
+    _ctx: &Ctx,
+    edge_type: EdgeType,
+) -> GraphTypeElements {
+    GraphTypeElements::EdgeType(edge_type)
 }
 pub type TypeName = IDENTIFIER;
 pub fn type_name_identifier(_ctx: &Ctx, identifier: IDENTIFIER) -> TypeName {
@@ -389,10 +458,16 @@ pub struct Date {
     pub check_opt: CheckOpt,
 }
 #[derive(Debug, Clone)]
+pub struct Bool {
+    pub card_opt: CardOpt,
+    pub check_opt: CheckOpt,
+}
+#[derive(Debug, Clone)]
 pub enum SimpleType {
     StringSpec(StringSpec),
     Integer(Integer),
     Date(Date),
+    Bool(Bool),
     Any(CheckOpt),
     Cond(Cond),
 }
@@ -416,6 +491,13 @@ pub fn simple_type_date(
     check_opt: CheckOpt,
 ) -> SimpleType {
     SimpleType::Date(Date { card_opt, check_opt })
+}
+pub fn simple_type_bool(
+    _ctx: &Ctx,
+    card_opt: CardOpt,
+    check_opt: CheckOpt,
+) -> SimpleType {
+    SimpleType::Bool(Bool { card_opt, check_opt })
 }
 pub fn simple_type_any(_ctx: &Ctx, check_opt: CheckOpt) -> SimpleType {
     SimpleType::Any(check_opt)
@@ -547,6 +629,8 @@ pub fn max_star(_ctx: &Ctx) -> Max {
 pub enum SingleValue {
     StringValue(QUOTED_STRING),
     NumberValue(NUMBER),
+    DateValue(QUOTED_STRING),
+    BooleanValue(BOOL),
 }
 pub fn single_value_string_value(
     _ctx: &Ctx,
@@ -556,4 +640,21 @@ pub fn single_value_string_value(
 }
 pub fn single_value_number_value(_ctx: &Ctx, number: NUMBER) -> SingleValue {
     SingleValue::NumberValue(number)
+}
+pub fn single_value_date_value(_ctx: &Ctx, quoted_string: QUOTED_STRING) -> SingleValue {
+    SingleValue::DateValue(quoted_string)
+}
+pub fn single_value_boolean_value(_ctx: &Ctx, bool: BOOL) -> SingleValue {
+    SingleValue::BooleanValue(bool)
+}
+#[derive(Debug, Clone)]
+pub enum BOOL {
+    TRUE,
+    FALSE,
+}
+pub fn bool_true(_ctx: &Ctx) -> BOOL {
+    BOOL::TRUE
+}
+pub fn bool_false(_ctx: &Ctx) -> BOOL {
+    BOOL::FALSE
 }

@@ -1,6 +1,7 @@
 use std::fmt::Display;
 
 use regex::Regex;
+use time::{Date, macros::format_description};
 
 use crate::pgs_error::PgsError;
 
@@ -8,7 +9,8 @@ use crate::pgs_error::PgsError;
 pub enum Value {
     String(String),
     Integer(i32),
-    Date(String), // Simplified for this example
+    Date(Date), // Simplified for this example
+    Bool(bool),
 }
 
 impl Value {
@@ -20,12 +22,25 @@ impl Value {
         Value::Integer(i)
     }
 
-    pub fn date(d: &str) -> Self {
-        Value::Date(d.to_string())
+    pub fn date(repr: &str) -> Result<Self, PgsError> {
+        let format = format_description!("[year]-[month]-[day]");
+        let date = Date::parse(repr, &format).map_err(|e| PgsError::InvalidDate {
+            date: repr.to_string(),
+            error: e.to_string(),
+        })?;
+        Ok(Value::Date(date))
     }
 
     pub fn is_string(&self) -> bool {
         matches!(self, Value::String(_))
+    }
+
+    pub fn true_() -> Self {
+        Value::Bool(true)
+    }
+
+    pub fn false_() -> Self {
+        Value::Bool(false)
     }
 
     pub fn is_integer(&self) -> bool {
@@ -36,9 +51,14 @@ impl Value {
         matches!(self, Value::Date(_))
     }
 
+    pub fn is_bool(&self) -> bool {
+        matches!(self, Value::Bool(_))
+    }
+
     pub fn greater_than(&self, other: &Value) -> Result<bool, PgsError> {
         match (self, other) {
             (Value::Integer(i), Value::Integer(v)) => Ok(i > v),
+            (Value::Date(i), Value::Date(v)) => Ok(i > v),
             _ => Err(PgsError::TypeMismatch {
                 operation: ">".into(),
                 expected: "Integer".into(),
@@ -50,6 +70,7 @@ impl Value {
     pub fn less_than(&self, other: &Value) -> Result<bool, PgsError> {
         match (self, other) {
             (Value::Integer(i), Value::Integer(v)) => Ok(i < v),
+            (Value::Date(i), Value::Date(v)) => Ok(i < v),
             _ => Err(PgsError::TypeMismatch {
                 operation: "<".into(),
                 expected: "Integer".into(),
@@ -60,7 +81,8 @@ impl Value {
 
     pub fn less_than_or_equal(&self, other: &Value) -> Result<bool, PgsError> {
         match (self, other) {
-            (Value::Integer(i), Value::Integer(v)) => Ok(i < v),
+            (Value::Integer(i), Value::Integer(v)) => Ok(i <= v),
+            (Value::Date(i), Value::Date(v)) => Ok(i <= v),
             _ => Err(PgsError::TypeMismatch {
                 operation: "<=".into(),
                 expected: "Integer".into(),
@@ -71,7 +93,8 @@ impl Value {
 
     pub fn greater_than_or_equal(&self, other: &Value) -> Result<bool, PgsError> {
         match (self, other) {
-            (Value::Integer(i), Value::Integer(v)) => Ok(i < v),
+            (Value::Integer(i), Value::Integer(v)) => Ok(i >= v),
+            (Value::Date(i), Value::Date(v)) => Ok(i >= v),
             _ => Err(PgsError::TypeMismatch {
                 operation: ">=".into(),
                 expected: "Integer".into(),
@@ -105,6 +128,7 @@ impl Display for Value {
             Value::String(s) => write!(f, "{}", s),
             Value::Integer(i) => write!(f, "{}", i),
             Value::Date(d) => write!(f, "{}", d),
+            Value::Bool(b) => write!(f, "{}", b),
         }
     }
 }

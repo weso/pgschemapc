@@ -4,19 +4,27 @@ This ChangeLog tries to follow the Keep a ChangeLog guidelines](https://keepacha
 
 ## [Unreleased]
 
+
+## v0.1.6
+
 ### Added
 - Support for edges in property graphs and property graph schemas
-- Added edge test
+- Added test: edge, datatypes
+- Added built-in datatypes Bool and Date
 
 ### Fixed
+- Rules for CREATE GRAPH TYPE in Grammar which were empty
+
 ### Changed
+- Improved error messages in test_suite runner using expect to show the name of the failing file when there is a parsing error
+
 ### Removed
 
 ## v0.1.5
 
 ### Added
 - Support for edges in property graphs and property graph schemas
-- Added edge test
+- Added tests: edge
 
 ### Fixed
 ### Changed
